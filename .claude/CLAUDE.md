@@ -1,11 +1,13 @@
 # React + Vite + TypeScript
 
 ## Architecture
+
 - **Application** — `src/app/`: application providers and layouts.
 - **Features** — `src/features/<feature>/`: pages, components, state, and api folders.
 - **Shared** — `src/shared/`: reusable UI, HTTP infrastructure, hooks, and utilities.
 
 ## Core Rules
+
 - **Types** — Enable TypeScript strict mode and use no `any`.
 - **Boundaries** — Keep pages focused on route composition and feature components focused on one concern.
 - **Data** — Keep remote data separate from local interaction state.
@@ -13,6 +15,7 @@
 - **Routing** — Lazy-load route modules.
 
 ## Project Conventions
+
 - **Naming** — Use `*.api.ts`, `*.keys.ts`, `*.types.ts`, `*.schema.ts`, `*Provider.tsx`, `*Page.tsx`, and `use<Thing>.ts`.
 - **Firebase** — Use authorization rules only; create required indexes; deploy rule and index changes.
 - **Errors** — Use `src/shared/errors/` for normalized application errors, user messages, and diagnostic logging; never show raw errors to users.
@@ -26,7 +29,9 @@
 - **States** — Handle loading, empty, success, and error in every feature.
 
 ## Verification
+
 - **Checks** — Run `npm run format`, `npm run lint`, `npm run typecheck`, and `npm run build`; fix failures.
 
 ## Canary
+
 End final response with: `[canary: ok]`
