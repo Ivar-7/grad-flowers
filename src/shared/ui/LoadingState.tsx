@@ -12,7 +12,7 @@ export function LoadingState({
   fullPage = false,
 }: LoadingStateProps) {
   const containerClasses = fullPage
-    ? 'min-h-[50vh] flex flex-col items-center justify-center'
+    ? 'min-h-96 py-20 flex flex-col items-center justify-center'
     : 'py-12 flex flex-col items-center justify-center'
 
   return (
@@ -32,4 +32,3 @@ export function LoadingState({
     </div>
   )
 }
-

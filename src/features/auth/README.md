@@ -2,19 +2,34 @@
 
 ## Overview
 
-The Auth feature handles user registration, authentication, and session state via Firebase Authentication.
+The Auth feature provides end-to-end authentication and graduate profile management via Firebase Authentication and Cloud Firestore.
+
+## Capabilities
+
+- **Email & Password Authentication**: Validated login with password visibility toggle.
+- **Account Registration**: Graduate onboarding with display name, email, password strength verification, and confirmation match.
+- **Forgot Password**: Password reset request with email verification link via `sendPasswordResetEmail`.
+- **Google OAuth**: Fast single-click authentication via `GoogleAuthProvider` popup.
+- **Profile Synchronization**: Automatic sync of graduate user records to `/users/{uid}` in Firestore.
+- **Session State**: Live observable session persistence through `onAuthStateChanged`.
+- **User Profile Dashboard**: Monogram/photo avatar, verification badge, and sign-out controls.
 
 ## Architecture
 
 - `types/`:
-  - `auth.types.ts`: `AuthUser`, `AuthMode`, `AuthState`.
-  - `auth.schema.ts`: Zod schema validating email, password, and registration input.
+  - `auth.types.ts`: `AuthUser`, `UserProfileDoc`, `AuthMode`, `AuthState`.
+  - `auth.schema.ts`: Zod validation schemas for login, registration, and password recovery.
 - `api/`:
-  - `auth.api.ts`: Firebase Auth integration (`signInWithEmailAndPassword`, `createUserWithEmailAndPassword`, `signOut`, `onAuthStateChanged`).
+  - `auth.api.ts`: Firebase Auth operations with normalized error handling.
 - `state/`:
-  - `AuthProvider.tsx`: React Context for Firebase session persistence.
-  - `useAuth.ts`: Custom hook to consume authentication actions and state.
+  - `auth.context.ts`: Fast Refresh compliant React context container.
+  - `AuthProvider.tsx`: Root context provider managing session lifecycle.
+  - `useAuth.ts`: Custom hook to consume authentication state and actions.
 - `components/`:
-  - `AuthForm.tsx`: Sign In and Sign Up form with input validation and normalized error presentation.
+  - `LoginForm.tsx`: Email/password and Google login with forgot password link.
+  - `SignUpForm.tsx`: Account creation with confirmation validation.
+  - `ForgotPasswordForm.tsx`: Password recovery form with dispatch feedback.
+  - `UserProfileCard.tsx`: Active graduate profile view with logout action.
+  - `AuthForm.tsx`: State orchestrator with smooth Motion transitions between modes.
 - `pages/`:
-  - `AuthPage.tsx`: Route page for authentication.
+  - `AuthPage.tsx`: Route page handling query parameter deep links (`?mode=signin|signup|forgot-password`).

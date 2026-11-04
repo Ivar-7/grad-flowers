@@ -1,9 +1,15 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import type { AuthUser } from '../types/auth.types'
-import type { AuthCredentials, SignUpInput } from '../types/auth.schema'
+import type {
+  AuthCredentials,
+  SignUpInput,
+  ForgotPasswordInput,
+} from '../types/auth.schema'
 import {
   loginWithEmail,
   registerWithEmail,
+  loginWithGoogle as apiLoginWithGoogle,
+  requestPasswordReset,
   logoutUser,
   subscribeToAuthState,
 } from '../api/auth.api'
@@ -48,6 +54,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [])
 
+  const loginWithGoogle = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const authUser = await apiLoginWithGoogle()
+      setUser(authUser)
+      return authUser
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const sendPasswordReset = useCallback(async (input: ForgotPasswordInput) => {
+    await requestPasswordReset(input)
+  }, [])
+
   const logout = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -64,6 +85,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated: Boolean(user),
     login,
     register,
+    loginWithGoogle,
+    sendPasswordReset,
     logout,
   }
 

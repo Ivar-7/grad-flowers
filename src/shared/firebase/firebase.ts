@@ -38,4 +38,3 @@ export async function initAnalytics(): Promise<Analytics | null> {
 
   return null
 }
-

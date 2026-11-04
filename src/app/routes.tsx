@@ -30,6 +30,35 @@ export const routes: RouteObject[] = [
         },
       },
       {
+        path: 'cart',
+        lazy: async () => {
+          const module = await import('@/features/cart/pages/CartPage')
+          return { Component: module.CartPage }
+        },
+      },
+      {
+        path: 'checkout',
+        lazy: async () => {
+          const module = await import('@/features/checkout/pages/CheckoutPage')
+          return { Component: module.CheckoutPage }
+        },
+      },
+      {
+        path: 'order-success/:orderId',
+        lazy: async () => {
+          const module =
+            await import('@/features/checkout/pages/OrderSuccessPage')
+          return { Component: module.OrderSuccessPage }
+        },
+      },
+      {
+        path: 'orders',
+        lazy: async () => {
+          const module = await import('@/features/orders/pages/OrdersPage')
+          return { Component: module.OrdersPage }
+        },
+      },
+      {
         path: 'auth',
         lazy: async () => {
           const module = await import('@/features/auth/pages/AuthPage')

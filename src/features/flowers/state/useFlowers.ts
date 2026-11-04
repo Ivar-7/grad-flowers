@@ -10,6 +10,7 @@ import { normalizeError } from '@/shared/errors/error-normalizer'
 
 export interface UseFlowersOptions {
   initialCategory?: FlowerCategory
+  initialColor?: string
 }
 
 export function useFlowers(options: UseFlowersOptions = {}) {
@@ -21,6 +22,9 @@ export function useFlowers(options: UseFlowersOptions = {}) {
   // Local interaction state
   const [selectedCategory, setSelectedCategory] = useState<FlowerCategory>(
     options.initialCategory ?? 'all',
+  )
+  const [selectedColor, setSelectedColor] = useState<string>(
+    options.initialColor ?? 'all',
   )
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [sortBy, setSortBy] = useState<FlowerSortOption>('featured')
@@ -68,12 +72,29 @@ export function useFlowers(options: UseFlowersOptions = {}) {
   const filteredFlowers = useMemo(() => {
     let result = [...remoteFlowers]
 
+    if (selectedColor && selectedColor !== 'all') {
+      const colorLower = selectedColor.toLowerCase()
+      result = result.filter(
+        (f) =>
+          f.schoolColorTags.some((tag) =>
+            tag.toLowerCase().includes(colorLower),
+          ) ||
+          f.ribbonColors.some((ribbon) =>
+            ribbon.toLowerCase().includes(colorLower),
+          ),
+      )
+    }
+
     if (searchQuery.trim()) {
       const queryLower = searchQuery.toLowerCase().trim()
       result = result.filter(
         (f) =>
           f.name.toLowerCase().includes(queryLower) ||
-          f.description.toLowerCase().includes(queryLower),
+          f.description.toLowerCase().includes(queryLower) ||
+          f.meaning.toLowerCase().includes(queryLower) ||
+          f.schoolColorTags.some((tag) =>
+            tag.toLowerCase().includes(queryLower),
+          ),
       )
     }
 
@@ -83,6 +104,8 @@ export function useFlowers(options: UseFlowersOptions = {}) {
           return a.price - b.price
         case 'price-desc':
           return b.price - a.price
+        case 'rating':
+          return b.rating - a.rating
         case 'name':
           return a.name.localeCompare(b.name)
         case 'featured':
@@ -92,14 +115,14 @@ export function useFlowers(options: UseFlowersOptions = {}) {
     })
 
     return result
-  }, [remoteFlowers, searchQuery, sortBy])
+  }, [remoteFlowers, selectedColor, searchQuery, sortBy])
 
   const isEmpty = !isLoading && !error && filteredFlowers.length === 0
   const isSuccess = !isLoading && !error && filteredFlowers.length > 0
 
   return {
     flowers: filteredFlowers,
-    totalCount: remoteFlowers.length,
+    totalCount: filteredFlowers.length,
     isLoading,
     isSuccess,
     isEmpty,
@@ -108,6 +131,8 @@ export function useFlowers(options: UseFlowersOptions = {}) {
     // Filter controls
     selectedCategory,
     setSelectedCategory,
+    selectedColor,
+    setSelectedColor,
     searchQuery,
     setSearchQuery,
     sortBy,

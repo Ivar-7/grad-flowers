@@ -12,4 +12,3 @@ export interface FirebaseContextValue {
   analytics: Analytics | null
   isReady: boolean
 }
-

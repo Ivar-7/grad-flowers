@@ -31,6 +31,12 @@ service cloud.firestore {
     match /users/{userId}/orders/{orderId} {
       allow read, write: if isOwner(userId);
     }
+
+    // General orders (guest & authenticated delivery dispatches)
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isAuthenticated();
+    }
   }
 }
-

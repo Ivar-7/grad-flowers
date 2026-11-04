@@ -3,20 +3,29 @@ import { AppError } from './app-error'
 
 const FIREBASE_AUTH_ERROR_MAP: Record<string, string> = {
   'auth/invalid-email': 'Please provide a valid email address.',
+  'auth/missing-email': 'Please provide an email address.',
   'auth/user-disabled':
     'This account has been disabled. Please contact support.',
-  'auth/user-not-found': 'Invalid email or password.',
-  'auth/wrong-password': 'Invalid email or password.',
+  'auth/user-not-found': 'No account found with this email.',
+  'auth/wrong-password': 'Incorrect password. Please try again.',
   'auth/invalid-credential': 'Invalid email or password.',
   'auth/email-already-in-use': 'An account with this email already exists.',
   'auth/weak-password':
     'Password is too weak. Please choose at least 6 characters.',
-  'auth/operation-not-allowed': 'Sign-in provider is not enabled.',
+  'auth/operation-not-allowed': 'This sign-in provider is not enabled.',
   'auth/too-many-requests':
-    'Too many unsuccessful attempts. Please try again later.',
+    'Too many unsuccessful attempts. Please wait a moment and try again.',
   'auth/network-request-failed':
     'Network connection issue. Please check your internet.',
   'auth/popup-closed-by-user': 'Sign-in cancelled before completing.',
+  'auth/popup-blocked':
+    'Pop-up was blocked by your browser. Please allow pop-ups for this site.',
+  'auth/expired-action-code':
+    'The password reset link has expired. Please request a new one.',
+  'auth/invalid-action-code':
+    'The password reset link is invalid or has already been used.',
+  'auth/account-exists-with-different-credential':
+    'An account already exists with the same email using a different sign-in method.',
 }
 
 const FIRESTORE_ERROR_MAP: Record<string, string> = {

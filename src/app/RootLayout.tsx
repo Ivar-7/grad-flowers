@@ -4,6 +4,7 @@ import { Header } from '@/shared/ui/Header'
 import { Footer } from '@/shared/ui/Footer'
 import { LoadingState } from '@/shared/ui/LoadingState'
 import { ErrorBoundary } from '@/shared/errors/ErrorBoundary'
+import { CartDrawer } from '@/features/cart/components/CartDrawer'
 
 export function RootLayout() {
   return (
@@ -19,6 +20,7 @@ export function RootLayout() {
         </ErrorBoundary>
       </main>
       <Footer />
+      <CartDrawer />
     </div>
   )
 }
