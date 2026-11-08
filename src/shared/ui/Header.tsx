@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import {
@@ -47,8 +47,8 @@ export function Header() {
           <div className="flex items-center gap-2 truncate">
             <Sparkles className="h-3.5 w-3.5 text-amber-300 shrink-0" />
             <span className="font-medium truncate">
-              Commencement 2026: Free Campus Gate Delivery over $75 or 15% off
-              with code <strong className="font-bold">GRAD2026</strong>
+              Commencement 2026: Free Campus Gate Delivery over KSh 7,500 or 15%
+              off with code <strong className="font-bold">GRAD2026</strong>
             </span>
           </div>
           <button

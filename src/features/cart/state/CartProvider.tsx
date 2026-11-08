@@ -1,4 +1,4 @@
-import {
+﻿import {
   useState,
   useEffect,
   useCallback,
@@ -169,15 +169,19 @@ export function CartProvider({ children }: CartProviderProps) {
     let discountAmount = 0
 
     if (appliedPromo && appliedPromo.discountPercentage > 0) {
-      discountAmount = (subtotal * appliedPromo.discountPercentage) / 100
+      discountAmount = Math.round(
+        (subtotal * appliedPromo.discountPercentage) / 100,
+      )
     }
 
-    // Free delivery over $75 or with promo code
-    const baseDelivery = subtotal > 75 || appliedPromo?.freeDelivery ? 0 : 9.99
+    // Free delivery over KSh 7,500 or with promo code
+    const baseDelivery =
+      subtotal > 7500 || appliedPromo?.freeDelivery ? 0 : 1000
     const deliveryFee = items.length === 0 ? 0 : baseDelivery
 
     const taxableAmount = Math.max(0, subtotal - discountAmount)
-    const estimatedTax = items.length === 0 ? 0 : taxableAmount * 0.08
+    const estimatedTax =
+      items.length === 0 ? 0 : Math.round(taxableAmount * 0.08)
 
     const total = Math.max(
       0,

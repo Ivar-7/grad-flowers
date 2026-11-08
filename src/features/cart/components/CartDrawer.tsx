@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, ShoppingBag, ArrowRight, Truck, Check, Tag } from 'lucide-react'
@@ -6,6 +6,7 @@ import { useCart } from '../state/useCart'
 import { CartItemRow } from './CartItemRow'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { formatKsh } from '@/shared/utils/currency'
 
 export function CartDrawer() {
   const {
@@ -43,8 +44,8 @@ export function CartDrawer() {
     navigate('/checkout')
   }
 
-  // Free delivery threshold: $75
-  const freeDeliveryThreshold = 75
+  // Free delivery threshold: KSh 7,500
+  const freeDeliveryThreshold = 7500
   const amountUntilFreeDelivery = Math.max(
     0,
     freeDeliveryThreshold - summary.subtotal,
@@ -115,8 +116,8 @@ export function CartDrawer() {
                         <span>Free Campus Ceremony Delivery unlocked!</span>
                       ) : (
                         <span>
-                          Add ${amountUntilFreeDelivery.toFixed(2)} more for
-                          free campus delivery
+                          Add {formatKsh(amountUntilFreeDelivery)} more for free
+                          campus delivery
                         </span>
                       )}
                     </span>
@@ -216,14 +217,14 @@ export function CartDrawer() {
                     <div className="flex justify-between">
                       <span>Subtotal</span>
                       <span className="font-semibold text-neutral-900 dark:text-white">
-                        ${summary.subtotal.toFixed(2)}
+                        {formatKsh(summary.subtotal)}
                       </span>
                     </div>
 
                     {summary.discountAmount > 0 && (
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                         <span>Discount ({appliedPromo?.code})</span>
-                        <span>-${summary.discountAmount.toFixed(2)}</span>
+                        <span>-{formatKsh(summary.discountAmount)}</span>
                       </div>
                     )}
 
@@ -235,20 +236,20 @@ export function CartDrawer() {
                             FREE
                           </span>
                         ) : (
-                          `$${summary.deliveryFee.toFixed(2)}`
+                          `${formatKsh(summary.deliveryFee)}`
                         )}
                       </span>
                     </div>
 
                     <div className="flex justify-between">
                       <span>Estimated Tax (8%)</span>
-                      <span>${summary.estimatedTax.toFixed(2)}</span>
+                      <span>{formatKsh(summary.estimatedTax)}</span>
                     </div>
 
                     <div className="flex justify-between pt-2 border-t border-neutral-200 dark:border-neutral-800 text-sm font-bold text-neutral-900 dark:text-white">
                       <span>Total</span>
                       <span className="text-indigo-600 dark:text-indigo-400 text-base">
-                        ${summary.total.toFixed(2)}
+                        {formatKsh(summary.total)}
                       </span>
                     </div>
                   </div>

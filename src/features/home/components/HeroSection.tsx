@@ -30,23 +30,23 @@ interface HeroShowcaseItem {
 
 const HERO_SHOWCASE_ITEMS: HeroShowcaseItem[] = [
   {
-    id: 'grad-sunflower-joy',
-    title: 'Summa Cum Laude Sunflowers',
-    subtitle: 'Radiant golden blooms with royal navy satin wrap',
-    price: '$64.99',
-    stems: '15 Fresh Stems',
+    id: 'grad-grand-chancellor',
+    title: 'Chancellor Celebration Bouquet',
+    subtitle: 'Garden roses, calla lilies and delphiniums in a grand cascade',
+    price: 'KSh 14,000',
+    stems: '36 Fresh Stems',
     imageUrl:
-      'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&q=80',
     ribbonLabel: 'Navy & Gold Foil',
     ribbonColorClass: 'bg-blue-900 text-amber-300 border-amber-400/40',
-    inscription: 'CLASS OF 2026 • SUMMA CUM LAUDE',
+    inscription: 'CLASS OF 2026 • HIGHEST HONORS',
     campusTag: 'North Gate Kiosk Ready',
   },
   {
     id: 'grad-crimson-roses',
     title: 'Valedictorian Crimson Roses',
     subtitle: 'Two dozen velvety long-stem red roses in parchment',
-    price: '$89.99',
+    price: 'KSh 9,000',
     stems: '24 Long Stems',
     imageUrl:
       'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80',
@@ -59,7 +59,7 @@ const HERO_SHOWCASE_ITEMS: HeroShowcaseItem[] = [
     id: 'grad-double-orchid-lei',
     title: 'Double Purple Orchid Lei',
     subtitle: 'Hand-strung with over 100 fresh dendrobium blooms',
-    price: '$59.99',
+    price: 'KSh 6,000',
     stems: '100+ Orchid Blooms',
     imageUrl:
       'https://images.unsplash.com/photo-1508615039623-a25605d2b022?auto=format&fit=crop&w=900&q=80',
@@ -320,7 +320,7 @@ export function HeroSection() {
                         }`}
                       >
                         {idx === 0
-                          ? 'Sunflowers'
+                          ? 'Mixed Bouquet'
                           : idx === 1
                             ? 'Crimson Roses'
                             : 'Orchid Lei'}

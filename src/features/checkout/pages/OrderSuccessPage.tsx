@@ -17,6 +17,7 @@ import { Button } from '@/shared/ui/Button'
 import { Badge } from '@/shared/ui/Badge'
 import { LoadingState } from '@/shared/ui/LoadingState'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { formatKsh } from '@/shared/utils/currency'
 
 const TRACKING_STEPS = [
   {
@@ -266,7 +267,7 @@ export function OrderSuccessPage() {
                   )}
                 </div>
                 <span className="text-xs font-bold text-neutral-900 dark:text-white">
-                  ${item.totalPrice.toFixed(2)}
+                  {formatKsh(item.totalPrice)}
                 </span>
               </div>
             ))}
@@ -274,12 +275,12 @@ export function OrderSuccessPage() {
             <div className="pt-3 space-y-1 text-xs text-neutral-500">
               <div className="flex justify-between">
                 <span>Items Subtotal</span>
-                <span>${order.summary.subtotal.toFixed(2)}</span>
+                <span>{formatKsh(order.summary.subtotal)}</span>
               </div>
               {order.summary.discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-600">
                   <span>Discount</span>
-                  <span>-${order.summary.discountAmount.toFixed(2)}</span>
+                  <span>-{formatKsh(order.summary.discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between">
@@ -287,13 +288,13 @@ export function OrderSuccessPage() {
                 <span>
                   {order.summary.deliveryFee === 0
                     ? 'FREE'
-                    : `$${order.summary.deliveryFee.toFixed(2)}`}
+                    : `${formatKsh(order.summary.deliveryFee)}`}
                 </span>
               </div>
               <div className="flex justify-between font-bold text-neutral-900 dark:text-white text-sm pt-2">
                 <span>Total Paid</span>
                 <span className="text-indigo-600 dark:text-indigo-400">
-                  ${order.summary.total.toFixed(2)}
+                  {formatKsh(order.summary.total)}
                 </span>
               </div>
             </div>

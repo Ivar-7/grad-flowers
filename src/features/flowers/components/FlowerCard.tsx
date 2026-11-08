@@ -6,6 +6,7 @@ import type { Flower } from '../types/flower.types'
 import { useCart } from '@/features/cart/state/useCart'
 import { Badge } from '@/shared/ui/Badge'
 import { Card } from '@/shared/ui/Card'
+import { formatKsh } from '@/shared/utils/currency'
 
 export interface FlowerCardProps {
   flower: Flower
@@ -117,7 +118,7 @@ export function FlowerCard({ flower }: FlowerCardProps) {
               From
             </span>
             <span className="text-lg font-extrabold text-neutral-900 dark:text-white">
-              ${flower.price.toFixed(2)}
+              {formatKsh(flower.price)}
             </span>
           </div>
 

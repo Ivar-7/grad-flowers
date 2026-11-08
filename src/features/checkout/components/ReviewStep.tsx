@@ -1,21 +1,29 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   MapPin,
   Calendar,
-  CreditCard,
+  Smartphone,
   User,
   ArrowLeft,
   CheckCircle2,
   ShieldCheck,
   AlertCircle,
 } from 'lucide-react'
-import type { DeliveryDetails, PaymentDetails } from '../types/checkout.types'
+import type {
+  DeliveryDetails,
+  Order,
+  PaymentDetails,
+} from '../types/checkout.types'
 import { useCart } from '@/features/cart/state/useCart'
 import { useAuth } from '@/features/auth/state/useAuth'
 import { createOrder } from '../api/orders.api'
+import { usePayheroCheckout } from '../state/usePayheroCheckout'
 import { normalizeError } from '@/shared/errors/error-normalizer'
+import { logError } from '@/shared/errors/error-logger'
 import { Button } from '@/shared/ui/Button'
 import { Badge } from '@/shared/ui/Badge'
+import { formatKsh } from '@/shared/utils/currency'
 
 export interface ReviewStepProps {
   delivery: DeliveryDetails
@@ -32,46 +40,54 @@ export function ReviewStep({
 }: ReviewStepProps) {
   const { items, summary, clearCart } = useCart()
   const { user } = useAuth()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const checkout = usePayheroCheckout()
+  const [orderError, setOrderError] = useState<string | null>(null)
+  const pendingOrderRef = useRef<Order | null>(null)
+
+  const { phase } = checkout
+  const isBusy = phase === 'initiating' || phase === 'awaiting'
+  const errorMessage = orderError ?? checkout.errorMessage
+
+  useEffect(() => {
+    if (phase !== 'paid' || !pendingOrderRef.current) return
+    const orderId = pendingOrderRef.current.id
+    clearCart()
+    onSuccess(orderId)
+  }, [phase, clearCart, onSuccess])
 
   const handlePlaceOrder = async () => {
-    setIsSubmitting(true)
-    setErrorMessage(null)
+    if (!user) return
+    setOrderError(null)
 
     try {
-      const order = await createOrder({
-        userId: user ? user.uid : null,
-        userEmail:
-          user?.email ||
-          `${delivery.recipientName.toLowerCase().replace(/\s+/g, '')}@student.edu`,
-        items,
-        summary,
-        delivery,
-        paymentMethod: payment.method,
-      })
+      if (!pendingOrderRef.current) {
+        pendingOrderRef.current = await createOrder({
+          userId: user.uid,
+          userEmail:
+            user.email ||
+            `${delivery.recipientName.toLowerCase().replace(/\s+/g, '')}@student.edu`,
+          items,
+          summary,
+          delivery,
+          paymentMethod: 'mpesa',
+        })
+      }
 
-      clearCart()
-      onSuccess(order.id)
+      await checkout.start({
+        amount: Math.ceil(summary.total),
+        phoneNumber: payment.phoneNumber,
+        description: `Grad Flowers order ${pendingOrderRef.current.id}`,
+        orderId: pendingOrderRef.current.id,
+        userId: user.uid,
+      })
     } catch (err) {
       const normalized = normalizeError(
         err,
-        'Failed to confirm reservation. Please try again.',
+        'Failed to start your order. Please try again.',
       )
-      setErrorMessage(normalized.userMessage)
-      setIsSubmitting(false)
+      logError(normalized, { feature: 'checkout', action: 'placeOrder' })
+      setOrderError(normalized.userMessage)
     }
-  }
-
-  const getPaymentLabel = () => {
-    if (payment.method === 'card') {
-      const last4 = payment.cardNumber?.slice(-4) || '••••'
-      return `Credit Card (ending in ${last4})`
-    }
-    if (payment.method === 'apple-pay') {
-      return 'Apple / Google Pay Express'
-    }
-    return 'Campus Florist Kiosk (Pay on pickup)'
   }
 
   return (
@@ -147,14 +163,14 @@ export function ReviewStep({
 
         <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/40">
           <div className="flex items-center gap-2 mb-2 text-xs font-bold text-neutral-900 dark:text-white uppercase tracking-wider">
-            <CreditCard className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <Smartphone className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Payment Method</span>
           </div>
           <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-            {getPaymentLabel()}
+            M-Pesa via PayHero
           </p>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Billing Zip: {payment.billingZip || 'Campus Handoff'}
+            Prompt sent to {payment.phoneNumber}
           </p>
         </div>
       </div>
@@ -191,7 +207,7 @@ export function ReviewStep({
               </div>
             </div>
             <span className="font-bold text-neutral-900 dark:text-white">
-              ${item.totalPrice.toFixed(2)}
+              {formatKsh(item.totalPrice)}
             </span>
           </div>
         ))}
@@ -199,10 +215,35 @@ export function ReviewStep({
         <div className="pt-3 flex justify-between items-center text-sm font-bold text-neutral-900 dark:text-white">
           <span>Total To Charge</span>
           <span className="text-lg text-indigo-600 dark:text-indigo-400">
-            ${summary.total.toFixed(2)}
+            {formatKsh(summary.total)}
           </span>
         </div>
       </div>
+
+      {phase === 'awaiting' && (
+        <div
+          role="status"
+          className="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs flex items-center gap-2.5"
+        >
+          <Smartphone className="h-4 w-4 shrink-0" />
+          <span>
+            Check your phone and enter your M-Pesa PIN to approve{' '}
+            {formatKsh(summary.total)}. This page updates automatically.
+          </span>
+        </div>
+      )}
+
+      {!user && (
+        <div
+          role="alert"
+          className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between gap-2.5"
+        >
+          <span>Please sign in to pay for your order with M-Pesa.</span>
+          <Link to="/auth" className="font-bold underline">
+            Sign in
+          </Link>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between pt-4">
@@ -210,7 +251,7 @@ export function ReviewStep({
           type="button"
           variant="outline"
           onClick={onBack}
-          disabled={isSubmitting}
+          disabled={isBusy}
           leftIcon={<ArrowLeft className="h-4 w-4" />}
         >
           Back to Payment
@@ -220,12 +261,14 @@ export function ReviewStep({
           type="button"
           variant="primary"
           size="lg"
-          isLoading={isSubmitting}
+          isLoading={isBusy}
+          disabled={!user}
           onClick={handlePlaceOrder}
           rightIcon={<CheckCircle2 className="h-4 w-4" />}
           className="shadow-lg shadow-indigo-600/25"
         >
-          Confirm & Place Order (${summary.total.toFixed(2)})
+          {phase === 'failed' ? 'Retry M-Pesa Payment' : 'Pay with M-Pesa'} (
+          {formatKsh(summary.total)})
         </Button>
       </div>
 

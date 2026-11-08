@@ -14,6 +14,7 @@ import { CartItemRow } from '../components/CartItemRow'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { formatKsh } from '@/shared/utils/currency'
 
 export function CartPage() {
   const {
@@ -162,14 +163,14 @@ export function CartPage() {
               <div className="flex justify-between">
                 <span>Items Subtotal</span>
                 <span className="font-semibold text-neutral-900 dark:text-white">
-                  ${summary.subtotal.toFixed(2)}
+                  {formatKsh(summary.subtotal)}
                 </span>
               </div>
 
               {summary.discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
                   <span>Discount</span>
-                  <span>-${summary.discountAmount.toFixed(2)}</span>
+                  <span>-{formatKsh(summary.discountAmount)}</span>
                 </div>
               )}
 
@@ -181,20 +182,20 @@ export function CartPage() {
                       FREE
                     </span>
                   ) : (
-                    `$${summary.deliveryFee.toFixed(2)}`
+                    `${formatKsh(summary.deliveryFee)}`
                   )}
                 </span>
               </div>
 
               <div className="flex justify-between">
                 <span>Estimated Sales Tax (8%)</span>
-                <span>${summary.estimatedTax.toFixed(2)}</span>
+                <span>{formatKsh(summary.estimatedTax)}</span>
               </div>
 
               <div className="flex justify-between pt-3 border-t border-neutral-200 dark:border-neutral-800 text-base font-bold text-neutral-900 dark:text-white">
                 <span>Estimated Total</span>
                 <span className="text-indigo-600 dark:text-indigo-400 text-lg">
-                  ${summary.total.toFixed(2)}
+                  {formatKsh(summary.total)}
                 </span>
               </div>
             </div>

@@ -16,17 +16,14 @@ export interface DeliveryDetails {
   specialInstructions?: string
 }
 
-export type PaymentMethodType = 'card' | 'apple-pay' | 'cash-on-pickup'
-
 export interface PaymentDetails {
-  method: PaymentMethodType
-  cardNumber?: string
-  cardExp?: string
-  cardCvc?: string
-  billingZip?: string
+  phoneNumber: string
 }
 
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled'
+
 export type OrderStatus =
+  | 'pending-payment'
   | 'confirmed'
   | 'florist-arranging'
   | 'ribbon-embossed'
@@ -40,7 +37,8 @@ export interface Order {
   items: CartItem[]
   summary: CartSummary
   delivery: DeliveryDetails
-  paymentMethod: PaymentMethodType
+  paymentMethod: 'mpesa'
+  paymentId?: string
   status: OrderStatus
   createdAt: string
   estimatedDeliveryWindow: string

@@ -11,7 +11,7 @@ const CATEGORY_TILES = [
     imageUrl:
       'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?auto=format&fit=crop&w=600&q=80',
     category: 'sunflowers',
-    stemInfo: 'From $49.99',
+    stemInfo: 'From KSh 5,000',
   },
   {
     title: 'Valedictorian Roses',
@@ -20,7 +20,7 @@ const CATEGORY_TILES = [
     imageUrl:
       'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
     category: 'roses',
-    stemInfo: 'From $68.99',
+    stemInfo: 'From KSh 6,900',
   },
   {
     title: 'Ceremonial Orchid Leis',
@@ -29,7 +29,7 @@ const CATEGORY_TILES = [
     imageUrl:
       'https://images.unsplash.com/photo-1508615039623-a25605d2b022?auto=format&fit=crop&w=600&q=80',
     category: 'leis',
-    stemInfo: 'From $59.99',
+    stemInfo: 'From KSh 6,000',
   },
   {
     title: 'Gown Corsages & Boutonnieres',
@@ -38,7 +38,7 @@ const CATEGORY_TILES = [
     imageUrl:
       'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80',
     category: 'boutonnieres',
-    stemInfo: 'From $24.99',
+    stemInfo: 'From KSh 2,500',
   },
 ]
 

@@ -32,6 +32,12 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Payments: written only by Cloud Functions; the paying user may read their own
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
     // General orders (guest & authenticated delivery dispatches)
     match /orders/{orderId} {
       allow read: if true;

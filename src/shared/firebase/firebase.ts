@@ -2,7 +2,8 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 import { getStorage, type FirebaseStorage } from 'firebase/storage'
-import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics'
+import { getFunctions, type Functions } from 'firebase/functions'
+import type { Analytics } from 'firebase/analytics'
 import { firebaseConfig } from './firebase.config'
 import { logError } from '../errors/error-logger'
 import { normalizeError } from '../errors/error-normalizer'
@@ -14,6 +15,7 @@ export const app: FirebaseApp =
 export const auth: Auth = getAuth(app)
 export const db: Firestore = getFirestore(app)
 export const storage: FirebaseStorage = getStorage(app)
+export const functions: Functions = getFunctions(app)
 
 let analyticsInstance: Analytics | null = null
 
@@ -23,6 +25,8 @@ export async function initAnalytics(): Promise<Analytics | null> {
   }
 
   try {
+    // Dynamic import so ad blockers blocking the analytics chunk cannot break app rendering
+    const { getAnalytics, isSupported } = await import('firebase/analytics')
     const supported = await isSupported()
     if (supported && typeof window !== 'undefined') {
       analyticsInstance = getAnalytics(app)

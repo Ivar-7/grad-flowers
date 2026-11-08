@@ -26,6 +26,7 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { ErrorState } from '@/shared/errors/ErrorState'
 import { normalizeError } from '@/shared/errors/error-normalizer'
 import type { AppError } from '@/shared/errors/app-error'
+import { formatKsh } from '@/shared/utils/currency'
 
 export function FlowerDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -243,7 +244,7 @@ export function FlowerDetailPage() {
             </h1>
 
             <p className="mt-2 text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              ${singleCombinedPrice.toFixed(2)}
+              {formatKsh(singleCombinedPrice)}
             </p>
 
             <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
@@ -282,7 +283,7 @@ export function FlowerDetailPage() {
                       {tierOpt.stemCount} fresh stems
                     </span>
                     <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-1">
-                      ${tierPrice.toFixed(2)}
+                      {formatKsh(tierPrice)}
                     </span>
                   </button>
                 )
@@ -392,7 +393,7 @@ export function FlowerDetailPage() {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                      +${addon.price.toFixed(2)}
+                      +{formatKsh(addon.price)}
                     </span>
                   </button>
                 )
@@ -451,7 +452,7 @@ export function FlowerDetailPage() {
               className="flex-1 shadow-lg shadow-indigo-600/20"
               leftIcon={<Plus className="h-5 w-5" />}
             >
-              Add to Ceremony Cart (${finalTotalPrice.toFixed(2)})
+              Add to Ceremony Cart ({formatKsh(finalTotalPrice)})
             </Button>
           </div>
 

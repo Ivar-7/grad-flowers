@@ -1,6 +1,7 @@
 import { Minus, Plus, Trash2, Tag, Gift, MessageSquare } from 'lucide-react'
 import type { CartItem } from '../types/cart.types'
 import { Badge } from '@/shared/ui/Badge'
+import { formatKsh } from '@/shared/utils/currency'
 
 export interface CartItemRowProps {
   item: CartItem
@@ -32,7 +33,7 @@ export function CartItemRow({
               {item.name}
             </h4>
             <span className="text-sm font-bold text-neutral-900 dark:text-white whitespace-nowrap">
-              ${item.totalPrice.toFixed(2)}
+              {formatKsh(item.totalPrice)}
             </span>
           </div>
 
@@ -63,7 +64,7 @@ export function CartItemRow({
                 >
                   <Gift className="h-3 w-3 text-indigo-500" />
                   <span>
-                    {addon.name} (+${addon.price.toFixed(2)})
+                    {addon.name} (+{formatKsh(addon.price)})
                   </span>
                 </span>
               ))}

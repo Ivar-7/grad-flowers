@@ -9,6 +9,7 @@ import { ReviewStep } from '../components/ReviewStep'
 import { Card } from '@/shared/ui/Card'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { formatKsh } from '@/shared/utils/currency'
 
 type CheckoutStep = 'delivery' | 'payment' | 'review'
 
@@ -34,11 +35,7 @@ export function CheckoutPage() {
   })
 
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({
-    method: 'card',
-    cardNumber: '',
-    cardExp: '',
-    cardCvc: '',
-    billingZip: '',
+    phoneNumber: '',
   })
 
   if (items.length === 0) {
@@ -156,7 +153,7 @@ export function CheckoutPage() {
 
       {/* Mini Cart Total Bar */}
       <div className="mt-6 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 px-2">
-        <span>Order Total: ${summary.total.toFixed(2)}</span>
+        <span>Order Total: {formatKsh(summary.total)}</span>
         <Link to="/cart" className="hover:underline">
           Edit items in cart
         </Link>

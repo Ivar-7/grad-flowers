@@ -38,50 +38,31 @@ export const DeliveryDetailsSchema = z.object({
     .optional(),
 })
 
-export const PaymentMethodTypeSchema = z.enum([
-  'card',
-  'apple-pay',
-  'cash-on-pickup',
+export function normalizeKenyanPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('254')) return `0${digits.slice(3)}`
+  if (digits.length === 9) return `0${digits}`
+  return digits
+}
+
+export const PaymentDetailsSchema = z.object({
+  phoneNumber: z
+    .string()
+    .trim()
+    .transform(normalizeKenyanPhone)
+    .refine(
+      (value) => /^(07|01)\d{8}$/.test(value),
+      'Enter a valid M-Pesa number, e.g. 0712345678',
+    ),
+})
+
+export const PaymentStatusSchema = z.enum([
+  'pending',
+  'paid',
+  'failed',
+  'cancelled',
 ])
 
-export const PaymentDetailsSchema = z
-  .object({
-    method: PaymentMethodTypeSchema,
-    cardNumber: z.string().optional(),
-    cardExp: z.string().optional(),
-    cardCvc: z.string().optional(),
-    billingZip: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.method === 'card') {
-      const cleanCard = (data.cardNumber ?? '').replace(/\s+/g, '')
-      if (cleanCard.length < 13 || cleanCard.length > 19) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Please enter a valid card number',
-          path: ['cardNumber'],
-        })
-      }
-      if (!data.cardExp || !data.cardExp.includes('/')) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Format MM/YY required',
-          path: ['cardExp'],
-        })
-      }
-      if (!data.cardCvc || data.cardCvc.length < 3) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Enter 3 or 4 digit CVC',
-          path: ['cardCvc'],
-        })
-      }
-      if (!data.billingZip || data.billingZip.length < 4) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Enter billing zip/postal code',
-          path: ['billingZip'],
-        })
-      }
-    }
-  })
+export const StartPaymentResponseSchema = z.object({
+  paymentId: z.string().min(1),
+})

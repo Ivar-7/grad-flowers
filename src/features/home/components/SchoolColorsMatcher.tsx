@@ -32,11 +32,11 @@ const PRESETS: SchoolPreset[] = [
     ribbonBgClass: 'bg-blue-900 border-amber-400/50 text-amber-300',
     query: 'Blue',
     recommendedBouquet: {
-      id: 'grad-sunflower-joy',
-      name: 'Summa Cum Laude Sunflower Bouquet',
-      price: '$64.99',
+      id: 'grad-grand-chancellor',
+      name: 'Chancellor Grand 36-Stem Celebration Cascade',
+      price: 'KSh 14,000',
       imageUrl:
-        'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?auto=format&fit=crop&w=400&q=80',
+        'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=400&q=80',
     },
   },
   {
@@ -50,7 +50,7 @@ const PRESETS: SchoolPreset[] = [
     recommendedBouquet: {
       id: 'grad-crimson-roses',
       name: 'Valedictorian Crimson Velvet Roses',
-      price: '$89.99',
+      price: 'KSh 9,000',
       imageUrl:
         'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80',
     },
@@ -66,7 +66,7 @@ const PRESETS: SchoolPreset[] = [
     recommendedBouquet: {
       id: 'grad-double-orchid-lei',
       name: 'Commencement Double Purple Orchid Lei',
-      price: '$59.99',
+      price: 'KSh 6,000',
       imageUrl:
         'https://images.unsplash.com/photo-1508615039623-a25605d2b022?auto=format&fit=crop&w=400&q=80',
     },
@@ -82,7 +82,7 @@ const PRESETS: SchoolPreset[] = [
     recommendedBouquet: {
       id: 'grad-pure-white-roses',
       name: 'Alumni Pure White Avalanche Roses',
-      price: '$68.99',
+      price: 'KSh 6,900',
       imageUrl:
         'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=400&q=80',
     },
@@ -98,7 +98,7 @@ const PRESETS: SchoolPreset[] = [
     recommendedBouquet: {
       id: 'grad-golden-sunburst',
       name: 'Scholar Petite Golden Sunburst',
-      price: '$49.99',
+      price: 'KSh 5,000',
       imageUrl:
         'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=400&q=80',
     },

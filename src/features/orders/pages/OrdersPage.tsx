@@ -16,6 +16,7 @@ import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { LoadingState } from '@/shared/ui/LoadingState'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { formatKsh } from '@/shared/utils/currency'
 
 export function OrdersPage() {
   const { user } = useAuth()
@@ -166,7 +167,7 @@ export function OrdersPage() {
                       </span>
                     </div>
                     <span className="font-semibold text-neutral-900 dark:text-white">
-                      ${item.totalPrice.toFixed(2)}
+                      {formatKsh(item.totalPrice)}
                     </span>
                   </div>
                 ))}
@@ -179,7 +180,7 @@ export function OrdersPage() {
                     Order Total
                   </span>
                   <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">
-                    ${order.summary.total.toFixed(2)}
+                    {formatKsh(order.summary.total)}
                   </span>
                 </div>
 

@@ -1,4 +1,4 @@
-import {
+﻿import {
   collection,
   doc,
   getDoc,
@@ -62,36 +62,19 @@ export async function createOrder(
   const order: Order = {
     ...data,
     id,
-    status: 'confirmed',
+    status: 'pending-payment',
     createdAt,
     estimatedDeliveryWindow,
   }
 
-  // Always cache locally first so user is never stranded
-  cacheOrderLocally(order)
+  const orderDocRef = doc(db, 'orders', id)
+  await setDoc(orderDocRef, order)
 
-  try {
-    // Save to Firestore general orders collection
-    const orderDocRef = doc(db, 'orders', id)
-    await setDoc(orderDocRef, order)
-
-    // If signed-in user, also record in their subcollection
-    if (data.userId) {
-      const userOrderRef = doc(db, 'users', data.userId, 'orders', id)
-      await setDoc(userOrderRef, order)
-    }
-  } catch (error) {
-    // Non-fatal if offline/rules issue: log diagnostic and proceed with locally cached order
-    const appError = normalizeError(
-      error,
-      'Order saved locally. Cloud synchronization pending.',
-    )
-    logError(appError, {
-      feature: 'checkout',
-      action: 'createOrder',
-      metadata: { id },
-    })
+  if (data.userId) {
+    await setDoc(doc(db, 'users', data.userId, 'orders', id), order)
   }
+
+  cacheOrderLocally(order)
 
   return order
 }
@@ -126,7 +109,9 @@ export async function fetchUserOrders(userId: string): Promise<Order[]> {
     const snap = await getDocs(q)
 
     if (!snap.empty) {
-      return snap.docs.map((d) => d.data() as Order)
+      return snap.docs
+        .map((d) => d.data() as Order)
+        .filter((o) => o.status !== 'pending-payment')
     }
   } catch (error) {
     logError(normalizeError(error, 'Could not load past orders from cloud.'), {
@@ -138,5 +123,7 @@ export async function fetchUserOrders(userId: string): Promise<Order[]> {
 
   // Fallback to local storage filter
   const local = getStoredOrders()
-  return local.filter((o) => o.userId === userId || !o.userId)
+  return local.filter(
+    (o) => o.status !== 'pending-payment' && (o.userId === userId || !o.userId),
+  )
 }
