@@ -10,39 +10,89 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Public flowers catalog: anyone can read, only authenticated staff/admin can modify
+    function userRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : 'customer';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && userRole() == 'admin';
+    }
+
+    function isStaffOrAdmin() {
+      return isAuthenticated() && userRole() in ['admin', 'staff'];
+    }
+
+    // Public flowers catalog: anyone can read, admin-only writes
     match /flowers/{flowerId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // Categories: public read, authenticated write
+    // Categories: public read, admin-only writes
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // User profiles: owner only
+    // Upcoming graduations calendar: public read, staff/admin write
+    match /graduations/{gradId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // User profiles: owner or staff can read; users cannot self-escalate role
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId) || isStaffOrAdmin();
+      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == 'customer');
+      allow update: if (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)) || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    // User orders: owner only
+    // User orders subcollection: owner and staff only
     match /users/{userId}/orders/{orderId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) || isStaffOrAdmin();
     }
 
-    // Payments: written only by Cloud Functions; the paying user may read their own
+    // Payments: written only by Cloud Functions; paying user, guest payment lookup by ID, or staff may read
     match /payments/{paymentId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow get: if !('userId' in resource.data) || resource.data.userId == null || (isAuthenticated() && resource.data.userId == request.auth.uid) || isStaffOrAdmin();
+      allow list: if isStaffOrAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow write: if false;
     }
 
-    // General orders (guest & authenticated delivery dispatches)
+    // Orders: anyone can create a pending-payment order without login/signup (must include name, email, and phone); ONLY owners and staff can read
     match /orders/{orderId} {
-      allow read: if true;
+      allow create: if request.resource.data.status == 'pending-payment'
+        && request.resource.data.userEmail is string
+        && request.resource.data.userEmail.size() > 3
+        && request.resource.data.delivery.recipientName is string
+        && request.resource.data.delivery.recipientName.size() >= 2
+        && request.resource.data.delivery.recipientPhone is string
+        && request.resource.data.delivery.recipientPhone.size() >= 9;
+      allow read: if isStaffOrAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isStaffOrAdmin();
+    }
+
+    // Leads (weekly supply, stockist, photo booking): public creation, staff/admin read & manage
+    match /leads/{leadId} {
       allow create: if true;
-      allow update: if isAuthenticated();
+      allow read, update, delete: if isStaffOrAdmin();
+    }
+
+    // Sellers / Hunters (stock, sales & referral codes): public read for ref validation, staff/admin write
+    match /sellers/{sellerId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // QR Message Cards (voice/video messages): anyone with the card QR code can open (get), buyers can create
+    match /qrMessages/{messageId} {
+      allow get: if true;
+      allow list: if isStaffOrAdmin();
+      allow create: if true;
+      allow update, delete: if isStaffOrAdmin();
     }
   }
 }

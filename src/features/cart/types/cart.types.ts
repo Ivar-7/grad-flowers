@@ -8,6 +8,7 @@ export interface CartItem {
   id: string
   flowerId: string
   name: string
+  whatsInIt?: string
   imageUrl: string
   category: string
   basePrice: number
@@ -18,21 +19,19 @@ export interface CartItem {
   ribbonColor: string
   ribbonCustomText?: string
   cardMessage?: string
+  qrMessageId?: string
   addOns: CartItemAddOn[]
   totalPrice: number
 }
 
-export interface PromoCode {
-  code: string
-  discountPercentage: number
-  freeDelivery?: boolean
-  description: string
-}
-
 export interface CartSummary {
   subtotal: number
-  discountAmount: number
-  deliveryFee: number
-  estimatedTax: number
   total: number
+}
+
+export interface QuickOrderOptions {
+  flowerId?: string
+  venue?: string
+  date?: string
+  schoolColor?: string
 }

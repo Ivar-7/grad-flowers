@@ -1,13 +1,11 @@
-import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ShoppingBag,
   ArrowRight,
   ArrowLeft,
-  Truck,
+  MapPin,
   ShieldCheck,
-  Tag,
-  Check,
+  Zap,
 } from 'lucide-react'
 import { useCart } from '../state/useCart'
 import { CartItemRow } from '../components/CartItemRow'
@@ -22,46 +20,39 @@ export function CartPage() {
     itemCount,
     updateQuantity,
     removeItem,
-    appliedPromo,
-    applyPromoCode,
-    removePromoCode,
     summary,
+    openQuickOrder,
   } = useCart()
 
   const navigate = useNavigate()
-  const [promoInput, setPromoInput] = useState('')
-  const [promoError, setPromoError] = useState<string | null>(null)
-
-  const handleApplyPromo = (e: FormEvent) => {
-    e.preventDefault()
-    setPromoError(null)
-    if (!promoInput.trim()) return
-
-    const success = applyPromoCode(promoInput)
-    if (success) {
-      setPromoInput('')
-    } else {
-      setPromoError('Invalid code. Try GRAD2026 or CAMPUS')
-    }
-  }
 
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <EmptyState
-          title="Your ceremony bouquet cart is empty"
-          description="Celebrate diplomas and academic achievements with fresh commencement flowers and personalized ribbons."
-          icon={<ShoppingBag className="h-8 w-8 text-indigo-500" />}
+          title="Your bouquet basket is empty"
+          description="Pick from our 6 official graduation products — from a KSh 50 Single rose to a KSh 1,500 Premium bouquet."
+          icon={<ShoppingBag className="h-8 w-8 text-rose-500" />}
           action={
-            <Link to="/flowers">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Button
                 variant="primary"
                 size="md"
-                rightIcon={<ArrowRight className="h-4 w-4" />}
+                onClick={() => openQuickOrder()}
+                leftIcon={<Zap className="h-4 w-4" />}
               >
-                Browse Graduation Bouquets
+                Order in 60 Seconds
               </Button>
-            </Link>
+              <Link to="/flowers">
+                <Button
+                  variant="outline"
+                  size="md"
+                  rightIcon={<ArrowRight className="h-4 w-4" />}
+                >
+                  View Full Menu
+                </Button>
+              </Link>
+            </div>
           }
         />
       </div>
@@ -73,30 +64,29 @@ export function CartPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-4xl">
-            Ceremony Floral Cart
+            Your Graduation Basket
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Review your graduation arrangements, commemorative ribbons, and
-            delivery schedule
+            Review your selected bouquets before choosing your pickup station
+            and paying via M-Pesa
           </p>
         </div>
 
         <Link
           to="/flowers"
-          className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+          className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-rose-600 dark:text-rose-400 hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Continue Shopping</span>
+          <span>Back to Menu</span>
         </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Cart Items List */}
         <div className="lg:col-span-8">
           <Card className="p-6 divide-y divide-neutral-100 dark:divide-neutral-800">
             <div className="pb-4 flex justify-between items-center text-sm font-semibold text-neutral-700 dark:text-neutral-300">
               <span>Selected Bouquets ({itemCount})</span>
-              <span>Subtotal</span>
+              <span>Price</span>
             </div>
 
             {items.map((item) => (
@@ -110,91 +100,30 @@ export function CartPage() {
           </Card>
         </div>
 
-        {/* Order Summary Sidebar */}
         <div className="lg:col-span-4 space-y-6">
           <Card className="p-6">
             <h3 className="text-base font-bold text-neutral-900 dark:text-white mb-4">
-              Order Summary
+              Payment Summary
             </h3>
 
-            {/* Promo Code Form */}
-            <form onSubmit={handleApplyPromo} className="flex gap-2 mb-4">
-              <div className="relative flex-1">
-                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
-                <input
-                  type="text"
-                  value={promoInput}
-                  onChange={(e) => setPromoInput(e.target.value)}
-                  placeholder="Code (GRAD2026)"
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white uppercase placeholder:normal-case placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <Button type="submit" variant="outline" size="sm">
-                Apply
-              </Button>
-            </form>
-
-            {promoError && (
-              <p className="text-xs text-red-600 dark:text-red-400 mb-3">
-                {promoError}
-              </p>
-            )}
-
-            {appliedPromo && (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs mb-4">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Check className="h-3.5 w-3.5" />
-                  <span>
-                    {appliedPromo.code}: {appliedPromo.description}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={removePromoCode}
-                  className="text-xs underline text-neutral-500 hover:text-neutral-800 dark:hover:text-white cursor-pointer"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-
-            {/* Price Line Items */}
-            <div className="space-y-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-sm text-neutral-600 dark:text-neutral-400">
+            <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800 text-sm text-neutral-600 dark:text-neutral-400">
               <div className="flex justify-between">
-                <span>Items Subtotal</span>
+                <span>Menu Price Subtotal</span>
                 <span className="font-semibold text-neutral-900 dark:text-white">
                   {formatKsh(summary.subtotal)}
                 </span>
               </div>
 
-              {summary.discountAmount > 0 && (
-                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-                  <span>Discount</span>
-                  <span>-{formatKsh(summary.discountAmount)}</span>
-                </div>
-              )}
-
               <div className="flex justify-between">
-                <span>Ceremony Campus Delivery</span>
-                <span>
-                  {summary.deliveryFee === 0 ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                      FREE
-                    </span>
-                  ) : (
-                    `${formatKsh(summary.deliveryFee)}`
-                  )}
+                <span>Station Pickup Fee</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                  FREE
                 </span>
               </div>
 
-              <div className="flex justify-between">
-                <span>Estimated Sales Tax (8%)</span>
-                <span>{formatKsh(summary.estimatedTax)}</span>
-              </div>
-
               <div className="flex justify-between pt-3 border-t border-neutral-200 dark:border-neutral-800 text-base font-bold text-neutral-900 dark:text-white">
-                <span>Estimated Total</span>
-                <span className="text-indigo-600 dark:text-indigo-400 text-lg">
+                <span>Total (M-Pesa)</span>
+                <span className="text-rose-600 dark:text-rose-400 text-lg">
                   {formatKsh(summary.total)}
                 </span>
               </div>
@@ -204,27 +133,26 @@ export function CartPage() {
               variant="primary"
               size="lg"
               onClick={() => navigate('/checkout')}
-              className="w-full mt-6 shadow-md shadow-indigo-500/20"
+              className="w-full mt-6"
               rightIcon={<ArrowRight className="h-4 w-4" />}
             >
-              Proceed to Checkout
+              Checkout (No Account Needed)
             </Button>
           </Card>
 
-          {/* Guarantees Box */}
           <Card className="p-6 space-y-3 text-xs text-neutral-600 dark:text-neutral-400">
             <div className="flex items-start gap-2.5">
-              <Truck className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+              <MapPin className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
               <span>
-                <strong>Campus Delivery Guaranteed:</strong> Delivered directly
-                to the ceremony venue or campus gates on time.
+                <strong>Fast Station Pickup:</strong> Collect right at our
+                graduation gate station or tent with your M-Pesa receipt code.
               </span>
             </div>
             <div className="flex items-start gap-2.5">
-              <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+              <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
               <span>
-                <strong>100% Fresh Arrival Guarantee:</strong> Replaced
-                immediately if any stem is damaged before the ceremony.
+                <strong>Fresh Kenyan Stems:</strong> Conditioned fresh every
+                graduation morning.
               </span>
             </div>
           </Card>

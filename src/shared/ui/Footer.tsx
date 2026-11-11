@@ -1,4 +1,4 @@
-import { Heart, Truck, ShieldCheck, Sparkles } from 'lucide-react'
+import { Heart, MapPin, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export function Footer() {
@@ -8,13 +8,12 @@ export function Footer() {
     <footer className="mt-auto border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950/60">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-          {/* Brand info */}
           <div className="md:col-span-2 space-y-3">
             <Link
               to="/"
               className="group inline-flex items-center gap-2.5 text-neutral-900 dark:text-white font-bold text-lg"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 text-white shadow-sm shadow-indigo-500/20 ring-1 ring-white/20">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-rose-600 via-amber-600 to-rose-800 text-white shadow-sm shadow-rose-500/20 ring-1 ring-white/20">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -44,120 +43,119 @@ export function Footer() {
                   />
                 </svg>
               </span>
-              <span>GradFlowers</span>
+              <span>GradFlowers Kenya</span>
             </Link>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-sm leading-relaxed">
-              Dedicated exclusively to graduation commencement floral
-              celebrations. Hand-tied bouquets, customized gold foil school
-              ribbons, and direct ceremony venue gate delivery.
+              Fresh rose bouquets for Kenyan graduations. Pay with M-Pesa and
+              collect at our station outside your university gate.
             </p>
-            <div className="flex items-center gap-4 text-xs text-neutral-500 pt-2">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500 pt-2">
               <span className="inline-flex items-center gap-1">
-                <Truck className="h-3.5 w-3.5 text-indigo-500" />
-                Campus Venue Delivery
+                <MapPin className="h-3.5 w-3.5 text-rose-500" />
+                UoN • KU • JKUAT • Strathmore • USIU • MKU
               </span>
               <span className="inline-flex items-center gap-1">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                Freshness Guaranteed
+                Instant M-Pesa Checkout
               </span>
             </div>
           </div>
 
-          {/* Quick links */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white mb-3">
-              Commencement Shop
+              Our Six Products
             </h4>
             <ul className="space-y-2 text-xs text-neutral-600 dark:text-neutral-400">
               <li>
                 <Link
-                  to="/flowers"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  to="/flowers/single"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  All Graduation Bouquets
+                  Single — 1 rose, ribbon (KSh 50)
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/flowers?category=sunflowers"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  to="/flowers/mini"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Commencement Sunflowers
+                  Mini — 3 roses, filler, wrap (KSh 350)
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/flowers?category=roses"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  to="/flowers/mini-candy"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Valedictorian Roses
+                  Mini Candy — +Chocolate & card (KSh 500)
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/flowers?category=leis"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  to="/flowers/classic"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Hawaiian Orchid Leis
+                  Classic — 6 roses, QR card (KSh 600)
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/flowers?category=boutonnieres"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  to="/flowers/classic-candy"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Gown Corsages & Lapels
+                  Classic Candy — +Eclairs & toffees (KSh 750)
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/flowers/premium"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
+                >
+                  Premium — 12 roses, double wrap, QR (KSh 1,500)
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Orders & Support */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white mb-3">
-              Reservations & Orders
+              Orders & Services
             </h4>
             <ul className="space-y-2 text-xs text-neutral-600 dark:text-neutral-400">
               <li>
                 <Link
-                  to="/cart"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
-                >
-                  View Ceremony Cart
-                </Link>
-              </li>
-              <li>
-                <Link
                   to="/orders"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Track Delivery Status
+                  Station Collection Pass
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/auth"
-                  className="hover:text-indigo-600 dark:hover:text-white transition-colors"
+                  to="/leads"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Graduate Account
+                  Weekly Supply, Stockist & Photo Booking
                 </Link>
               </li>
               <li>
-                <span className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-medium pt-1">
-                  <Sparkles className="h-3 w-3" />
-                  Promo Code: GRAD2026
-                </span>
+                <Link
+                  to="/staff"
+                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
+                >
+                  Staff & Hunters Dashboard
+                </Link>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="pt-8 border-t border-neutral-200/60 dark:border-neutral-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-400 dark:text-neutral-500">
-          <p>© {currentYear} GradFlowers Marketplace. All rights reserved.</p>
+          <p>© {currentYear} GradFlowers Kenya. All rights reserved.</p>
           <p className="flex items-center gap-1">
-            <span>Crafted with</span>
+            <span>Hand-tied with</span>
             <Heart className="h-3 w-3 text-rose-500 fill-rose-500" />
-            <span>for graduates and families everywhere.</span>
+            <span>for Kenyan graduates & proud families.</span>
           </p>
         </div>
       </div>

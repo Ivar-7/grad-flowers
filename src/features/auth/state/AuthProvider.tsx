@@ -83,6 +83,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     isLoading,
     isAuthenticated: Boolean(user),
+    isStaffOrAdmin: user?.role === 'admin' || user?.role === 'staff',
+    isAdmin: user?.role === 'admin',
     login,
     register,
     loginWithGoogle,

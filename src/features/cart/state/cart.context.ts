@@ -1,5 +1,9 @@
 import { createContext } from 'react'
-import type { CartItem, CartSummary, PromoCode } from '../types/cart.types'
+import type {
+  CartItem,
+  CartSummary,
+  QuickOrderOptions,
+} from '../types/cart.types'
 
 export interface CartContextValue {
   items: CartItem[]
@@ -12,10 +16,10 @@ export interface CartContextValue {
   removeItem: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
   clearCart: () => void
-  appliedPromo: PromoCode | null
-  applyPromoCode: (code: string) => boolean
-  removePromoCode: () => void
   summary: CartSummary
+  quickOrder: { isOpen: boolean } & QuickOrderOptions
+  openQuickOrder: (options?: QuickOrderOptions) => void
+  closeQuickOrder: () => void
 }
 
 export const CartContext = createContext<CartContextValue | null>(null)

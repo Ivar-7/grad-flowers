@@ -1,345 +1,129 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'motion/react'
-import {
-  ArrowRight,
-  Sparkles,
-  GraduationCap,
-  CheckCircle2,
-  Star,
-  MapPin,
-  Award,
-  ShieldCheck,
-  Flower2,
-} from 'lucide-react'
+import { motion } from 'motion/react'
+import { ArrowRight, Check } from 'lucide-react'
+import { useCart } from '@/features/cart/state/useCart'
+import { KENYAN_PICKUP_STATIONS } from '@/features/checkout/types/checkout.types'
+import { SEEDED_FLOWERS } from '@/features/flowers/api/flowers.api'
+import type { Flower } from '@/features/flowers/types/flower.types'
 import { Button } from '@/shared/ui/Button'
-import { Badge } from '@/shared/ui/Badge'
+import { formatKsh } from '@/shared/utils/currency'
+import type { UpcomingGraduation } from '../state/useUpcomingGraduations'
+import { GraduationTicket } from './GraduationTicket'
+import { PriceList } from './PriceList'
 
-interface HeroShowcaseItem {
-  id: string
-  title: string
-  subtitle: string
-  price: string
-  stems: string
-  imageUrl: string
-  ribbonLabel: string
-  ribbonColorClass: string
-  inscription: string
-  campusTag: string
-}
+const HERO_PHOTO =
+  'https://images.unsplash.com/photo-1523693916903-027d144a2b7d?auto=format&fit=crop&q=75'
 
-const HERO_SHOWCASE_ITEMS: HeroShowcaseItem[] = [
-  {
-    id: 'grad-grand-chancellor',
-    title: 'Chancellor Celebration Bouquet',
-    subtitle: 'Garden roses, calla lilies and delphiniums in a grand cascade',
-    price: 'KSh 14,000',
-    stems: '36 Fresh Stems',
-    imageUrl:
-      'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&q=80',
-    ribbonLabel: 'Navy & Gold Foil',
-    ribbonColorClass: 'bg-blue-900 text-amber-300 border-amber-400/40',
-    inscription: 'CLASS OF 2026 • HIGHEST HONORS',
-    campusTag: 'North Gate Kiosk Ready',
-  },
-  {
-    id: 'grad-crimson-roses',
-    title: 'Valedictorian Crimson Roses',
-    subtitle: 'Two dozen velvety long-stem red roses in parchment',
-    price: 'KSh 9,000',
-    stems: '24 Long Stems',
-    imageUrl:
-      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80',
-    ribbonLabel: 'Crimson & Gold Foil',
-    ribbonColorClass: 'bg-rose-950 text-amber-300 border-amber-400/40',
-    inscription: 'VALEDICTORIAN HONORS • 2026',
-    campusTag: 'Main Quad Tent Delivery',
-  },
-  {
-    id: 'grad-double-orchid-lei',
-    title: 'Double Purple Orchid Lei',
-    subtitle: 'Hand-strung with over 100 fresh dendrobium blooms',
-    price: 'KSh 6,000',
-    stems: '100+ Orchid Blooms',
-    imageUrl:
-      'https://images.unsplash.com/photo-1508615039623-a25605d2b022?auto=format&fit=crop&w=900&q=80',
-    ribbonLabel: 'Royal Purple & Gold',
-    ribbonColorClass: 'bg-purple-950 text-amber-300 border-amber-400/40',
-    inscription: 'ALOHA & CONGRATULATIONS GRAD',
-    campusTag: 'Stadium Entrance Handoff',
-  },
+const MENU_PRICES = SEEDED_FLOWERS.map((flower) => flower.price)
+const LOWEST_PRICE = formatKsh(Math.min(...MENU_PRICES))
+const HIGHEST_PRICE = formatKsh(Math.max(...MENU_PRICES))
+
+const PROMISES = [
+  'Pay with M-Pesa',
+  `${KENYAN_PICKUP_STATIONS.length} campus pick-up stations`,
+  'No account needed',
 ]
 
-export function HeroSection() {
-  const [activeIndex, setActiveIndex] = useState(0)
-  const activeItem = HERO_SHOWCASE_ITEMS[activeIndex] ?? HERO_SHOWCASE_ITEMS[0]!
+export interface HeroSectionProps {
+  flowers: Flower[]
+  isLoadingFlowers: boolean
+  nextGraduation: UpcomingGraduation | null
+}
+
+export function HeroSection({
+  flowers,
+  isLoadingFlowers,
+  nextGraduation,
+}: HeroSectionProps) {
+  const { openQuickOrder } = useCart()
 
   return (
-    <section className="relative overflow-hidden pt-10 pb-20 sm:pt-16 sm:pb-28 bg-gradient-to-b from-indigo-50/80 via-white to-neutral-50/50 dark:from-indigo-950/30 dark:via-neutral-950 dark:to-neutral-900/30 border-b border-neutral-200/70 dark:border-neutral-800/70">
-      {/* Decorative Ambient Glows */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-24 left-1/4 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl dark:bg-indigo-500/10"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/3 right-10 h-80 w-80 rounded-full bg-amber-300/15 blur-3xl dark:bg-purple-500/10"
-      />
-
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
-          {/* Left Column: Editorial Messaging & CTAs */}
-          <div className="lg:col-span-7 flex flex-col items-start text-left">
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Badge
-                variant="purple"
-                className="mb-6 px-3.5 py-1.5 text-xs sm:text-sm gap-2 shadow-xs border border-purple-200/80 dark:border-purple-800/60"
-              >
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <GraduationCap className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                <span>Commencement Season 2026 Reservations Open</span>
-              </Badge>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.08 }}
-              className="text-4xl font-extrabold tracking-tight text-neutral-900 dark:text-white sm:text-6xl leading-tight"
-            >
-              Honor Every Milestone with{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-600 dark:from-indigo-400 dark:via-purple-400 dark:to-amber-400">
-                Ceremonial Blooms
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.16 }}
-              className="mt-5 max-w-2xl text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed"
-            >
-              Celebrate diplomas, degrees, and academic triumphs with hand-tied
-              commencement bouquets, custom embossed gold-foil school ribbons,
-              and guaranteed stadium or auditorium gate delivery.
-            </motion.p>
-
-            {/* Value Highlights Pills */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.22 }}
-              className="mt-6 flex flex-wrap gap-2.5 text-xs font-medium text-neutral-700 dark:text-neutral-300"
-            >
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xs">
-                <Award className="h-3.5 w-3.5 text-amber-500" />
-                <span>Free Gold Foil Ribbon Inscription</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xs">
-                <MapPin className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Direct Campus Gate Handoff</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xs">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>100% Morning Freshness Guarantee</span>
-              </span>
-            </motion.div>
-
-            {/* Primary & Secondary CTAs */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.28 }}
-              className="mt-8 flex flex-col sm:flex-row gap-3.5 w-full sm:w-auto"
-            >
-              <Link to="/flowers" className="w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  rightIcon={<ArrowRight className="h-5 w-5" />}
-                  className="w-full sm:w-auto shadow-lg shadow-indigo-600/25 px-6"
-                >
-                  Explore Bouquets & Leis
-                </Button>
-              </Link>
-              <Link
-                to="/flowers?category=bestsellers"
-                className="w-full sm:w-auto"
-              >
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto bg-white/80 dark:bg-neutral-900/80"
-                  leftIcon={<Sparkles className="h-5 w-5 text-amber-500" />}
-                >
-                  Commencement Bestsellers
-                </Button>
-              </Link>
-            </motion.div>
-
-            {/* Social Proof Stats Bar */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.35 }}
-              className="mt-10 pt-8 border-t border-neutral-200/80 dark:border-neutral-800/80 grid grid-cols-2 sm:grid-cols-4 gap-6 w-full"
-            >
-              <div>
-                <div className="text-2xl font-extrabold text-neutral-900 dark:text-white">
-                  5,200+
-                </div>
-                <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  Graduates Honored
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">
-                  48+
-                </div>
-                <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  Campuses Served
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl font-extrabold text-neutral-900 dark:text-white flex items-center gap-1">
-                  <span>4.95</span>
-                  <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
-                </div>
-                <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  Family Rating (1.4k+ reviews)
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span>100%</span>
-                </div>
-                <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  On-Time Gate Arrival
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Right Column: Interactive Commencement Bouquet Showcase */}
+    <section className="bg-orange-50 dark:bg-neutral-950">
+      <div className="mx-auto max-w-7xl px-4 pt-10 pb-12 sm:px-6 sm:pt-16 sm:pb-16 lg:px-8 lg:pt-20">
+        <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
           <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.45, delay: 0.15 }}
-            className="lg:col-span-5"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="lg:col-span-7 lg:pr-8"
           >
-            <div className="relative rounded-3xl border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 sm:p-5 shadow-2xl shadow-indigo-950/10">
-              {/* Top Kiosk Status Pill */}
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="flex items-center gap-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                  <Flower2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>Signature Ceremony Presentation</span>
-                </div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span>{activeItem.campusTag}</span>
-                </span>
-              </div>
+            <p className="flex items-center gap-3 text-sm font-semibold tracking-widest text-rose-700 uppercase dark:text-rose-400">
+              <span aria-hidden="true" className="h-px w-8 bg-current" />
+              Hongera, Class of 2026
+            </p>
 
-              {/* Main Image Frame */}
-              <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl bg-neutral-100 dark:bg-neutral-800">
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={activeItem.id}
-                    src={activeItem.imageUrl}
-                    alt={activeItem.title}
-                    initial={{ opacity: 0, scale: 1.04 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="h-full w-full object-cover"
-                  />
-                </AnimatePresence>
+            <h1 className="mt-5 font-display text-5xl leading-none font-semibold tracking-tight text-balance text-neutral-900 sm:text-6xl lg:text-7xl dark:text-white">
+              They did the four years.{' '}
+              <em className="block text-rose-600 dark:text-rose-400">
+                You bring the flowers.
+              </em>
+            </h1>
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-neutral-700 dark:text-neutral-300">
+              Fresh rose bouquets from {LOWEST_PRICE} to {HIGHEST_PRICE}. Pay
+              with M-Pesa now, then collect at our station outside the
+              graduation gate on the morning.
+            </p>
 
-                {/* Top Left Stem Count Pill */}
-                <div className="absolute top-3 left-3">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 text-xs font-semibold text-white">
-                    <Sparkles className="h-3 w-3 text-amber-400" />
-                    <span>{activeItem.stems}</span>
-                  </span>
-                </div>
-
-                {/* Simulated Embossed Gold Foil Ribbon Overlay */}
-                <div className="absolute bottom-3 inset-x-3">
-                  <div
-                    className={`rounded-xl border px-3.5 py-2 shadow-lg backdrop-blur-md ${activeItem.ribbonColorClass}`}
-                  >
-                    <div className="flex items-center justify-between text-xs opacity-80 mb-0.5">
-                      <span>Embossed Satin Ribbon Preview</span>
-                      <span>{activeItem.ribbonLabel}</span>
-                    </div>
-                    <div className="text-xs sm:text-sm font-bold tracking-widest uppercase truncate">
-                      ★ {activeItem.inscription} ★
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Active Bouquet Details & Quick Link */}
-              <div className="mt-4 flex items-center justify-between gap-4 px-1">
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">
-                    {activeItem.title}
-                  </h2>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {activeItem.subtitle}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="block text-xs text-neutral-400">From</span>
-                  <span className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">
-                    {activeItem.price}
-                  </span>
-                </div>
-              </div>
-
-              {/* Interactive Arrangement Switcher Tabs */}
-              <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  {HERO_SHOWCASE_ITEMS.map((item, idx) => {
-                    const isSelected = idx === activeIndex
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setActiveIndex(idx)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                        }`}
-                      >
-                        {idx === 0
-                          ? 'Mixed Bouquet'
-                          : idx === 1
-                            ? 'Crimson Roses'
-                            : 'Orchid Lei'}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <Link
-                  to={`/flowers/${activeItem.id}`}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                >
-                  <span>Customize</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Button
+                size="lg"
+                onClick={() => openQuickOrder()}
+                rightIcon={
+                  <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                }
+                className="rounded-xl px-7 py-3.5 font-semibold shadow-lg shadow-rose-600/20"
+              >
+                Order in 60 seconds
+              </Button>
+              <a
+                href="#menu"
+                className="inline-flex items-center justify-center rounded-xl border border-neutral-300 px-7 py-3.5 text-base font-semibold text-neutral-800 transition-colors hover:border-neutral-900 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-neutral-700 dark:text-neutral-100 dark:hover:border-neutral-300 dark:focus-visible:ring-offset-neutral-950"
+              >
+                See the menu
+              </a>
             </div>
+
+            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+              {PROMISES.map((promise) => (
+                <li key={promise} className="flex items-center gap-2">
+                  <Check
+                    className="h-4 w-4 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden="true"
+                  />
+                  {promise}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
+            className="relative mx-auto w-full max-w-md lg:col-span-5 lg:max-w-none"
+          >
+            <img
+              src={`${HERO_PHOTO}&w=900`}
+              srcSet={`${HERO_PHOTO}&w=600 600w, ${HERO_PHOTO}&w=900 900w, ${HERO_PHOTO}&w=1400 1400w`}
+              sizes="(min-width: 1024px) 40vw, 100vw"
+              alt="A bouquet of pink roses in white wrap, ready to hand over"
+              fetchPriority="high"
+              className="aspect-square w-full rounded-3xl bg-orange-100 object-cover sm:aspect-4/5 dark:bg-neutral-900"
+            />
+            <PriceList
+              flowers={flowers}
+              isLoading={isLoadingFlowers}
+              className="relative mx-4 -mt-20 -rotate-1 sm:mx-8 lg:absolute lg:bottom-8 lg:-left-8 lg:mx-0 xl:-left-12 lg:mt-0 lg:w-72"
+            />
           </motion.div>
         </div>
+
+        {nextGraduation && (
+          <GraduationTicket
+            graduation={nextGraduation}
+            className="mt-12 lg:mt-16"
+          />
+        )}
       </div>
     </section>
   )

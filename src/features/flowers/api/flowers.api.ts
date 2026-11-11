@@ -1,291 +1,208 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
-  query,
-  where,
+  setDoc,
 } from 'firebase/firestore'
-import { db } from '@/shared/firebase/firebase'
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import { db, storage } from '@/shared/firebase/firebase'
 import { normalizeError } from '@/shared/errors/error-normalizer'
 import { logError } from '@/shared/errors/error-logger'
 import { FlowerSchema, FlowersListSchema } from '../types/flower.schema'
-import type {
-  Flower,
-  FlowerCategory,
-  FlowerAddOn,
-  StemTierOption,
-} from '../types/flower.types'
+import type { Flower, FlowerCategory } from '../types/flower.types'
 
-export const STEM_TIER_OPTIONS: StemTierOption[] = [
-  {
-    tier: 'standard',
-    label: 'Standard Ceremony',
-    stemCount: 12,
-    priceMultiplier: 1.0,
-  },
-  {
-    tier: 'deluxe',
-    label: 'Deluxe Celebration (+50% stems)',
-    stemCount: 18,
-    priceMultiplier: 1.35,
-  },
-  {
-    tier: 'grand',
-    label: 'Grand Honors (+100% stems)',
-    stemCount: 24,
-    priceMultiplier: 1.7,
-  },
-]
-
-export const FLOWER_ADD_ONS: FlowerAddOn[] = [
-  {
-    id: 'addon-grad-bear',
-    name: 'Class of 2026 Plush Graduate Bear',
-    price: 1500,
-    description:
-      'Adoral keepsake bear wearing miniature mortarboard cap & diploma',
-  },
-  {
-    id: 'addon-crystal-vase',
-    name: 'Commemorative Glass Presentation Vase',
-    price: 1900,
-    description:
-      'Heavy fluted glass vase to keep stems fresh during family banquets',
-  },
-  {
-    id: 'addon-grad-balloon',
-    name: 'Foil "Congrats Grad!" Helium Balloon',
-    price: 700,
-    description: '18-inch metallic star balloon with shimmering satin ribbon',
-  },
-  {
-    id: 'addon-honor-cord',
-    name: 'Decorative Gold Honor Cord Charm',
-    price: 1000,
-    description:
-      'Braided ceremonial double-tassel woven directly into the bouquet wrap',
-  },
-]
+export const OFFICIAL_PRODUCT_IDS = new Set([
+  'single',
+  'mini',
+  'mini-candy',
+  'classic',
+  'classic-candy',
+  'premium',
+])
 
 export const SEEDED_FLOWERS: Flower[] = [
   {
-    id: 'grad-sunflower-joy',
-    name: 'Summa Cum Laude Sunflower Bouquet',
+    id: 'single',
+    name: 'Single',
+    whatsInIt: '1 rose, ribbon',
     description:
-      'Lush golden sunflowers symbolizing bright futures and optimism, hand-tied with royal blue satin ribbon and solidago spray.',
-    price: 6500,
-    category: 'sunflowers',
+      'One fresh Kenyan long-stem rose tied with a satin ribbon in your school colours. Simple, sweet, and ready to hand over at the graduation square.',
+    price: 50,
+    category: 'single',
     imageUrl:
-      'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?auto=format&fit=crop&w=800&q=80',
-    isFeatured: true,
-    inStock: true,
-    ribbonColors: ['Navy Blue', 'Gold', 'Classic Black', 'Forest Green'],
-    schoolColorTags: ['Blue', 'Gold', 'Navy', 'Yellow'],
-    flowerCount: 15,
-    rating: 4.95,
-    reviewCount: 148,
-    meaning: 'Adoration, Loyalty, and a Bright Bright Future Ahead',
-  },
-  {
-    id: 'grad-crimson-roses',
-    name: 'Valedictorian Crimson Velvet Roses',
-    description:
-      'Two dozen velvety long-stem red roses in crisp parchment wrap with custom embossed gold commencement lettering.',
-    price: 9000,
-    category: 'roses',
-    imageUrl:
-      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
-    isFeatured: true,
-    inStock: true,
-    ribbonColors: ['Crimson Red', 'Silver', 'Gold', 'Black'],
-    schoolColorTags: ['Red', 'Crimson', 'Silver', 'White'],
-    flowerCount: 24,
-    rating: 4.98,
-    reviewCount: 232,
-    meaning: 'Deep Respect, Distinction, and High Academic Honors',
-  },
-  {
-    id: 'grad-regal-orchids',
-    name: 'Honor Society Purple Dendrobium Orchids',
-    description:
-      'Exquisite spray of purple dendrobium orchids, baby eucalyptus, and white snapdragons for distinction and regal elegance.',
-    price: 8000,
-    category: 'orchids',
-    imageUrl:
-      'https://images.unsplash.com/photo-1567696911980-2eed69a46042?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=800&q=80',
     isFeatured: false,
     inStock: true,
-    ribbonColors: ['Royal Purple', 'Pearl White', 'Silver'],
-    schoolColorTags: ['Purple', 'White', 'Silver'],
-    flowerCount: 16,
-    rating: 4.88,
-    reviewCount: 94,
-    meaning: 'Elegance, Pride, Dignity, and Unwavering Dedication',
+    ribbonColors: [
+      'Crimson Red',
+      'Royal Blue',
+      'Gold',
+      'Emerald Green',
+      'White',
+    ],
+    schoolColorTags: ['Red', 'Blue', 'Gold', 'Green', 'White'],
+    flowerCount: 1,
+    includesQrCard: false,
+    hasCandy: false,
+    meaning: 'Hongera! A quick, heartfelt gesture for a friend or classmate.',
   },
   {
-    id: 'grad-milestone-mix',
-    name: 'Diplomat Pastel Mixed Meadow',
+    id: 'mini',
+    name: 'Mini',
+    whatsInIt: '3 roses, 1 chrysanthemum or gypsophila, wrap',
     description:
-      'Joyous harmony of garden peonies, ranunculus, peach roses, and fragrant stock celebrating milestone diplomas.',
-    price: 7500,
-    category: 'mixed',
+      'Three vibrant Kenyan roses paired with fresh white chrysanthemum or delicate gypsophila filler in a crisp celebratory wrap and school ribbon.',
+    price: 350,
+    category: 'mini',
     imageUrl:
-      'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=800&q=80',
     isFeatured: true,
     inStock: true,
-    ribbonColors: ['Rose Gold', 'Lavender', 'Champagne', 'Blush'],
-    schoolColorTags: ['Pink', 'Peach', 'Gold', 'White'],
-    flowerCount: 18,
-    rating: 4.92,
-    reviewCount: 165,
-    meaning: 'Celebration, Everlasting Friendship, and Boundless Joy',
+    ribbonColors: [
+      'Royal Blue',
+      'Gold',
+      'Crimson Red',
+      'Purple',
+      'Emerald Green',
+    ],
+    schoolColorTags: ['Blue', 'Gold', 'Red', 'Purple', 'Green'],
+    flowerCount: 4,
+    includesQrCard: false,
+    hasCandy: false,
+    candyUpgradeTargetId: 'mini-candy',
+    candyUpgradeLabel: 'Upgrade to Mini Candy (+Chocolate & Success Card)',
+    candyUpgradePriceDiff: 150,
+    meaning: 'Bright pride and joy — easy to hold for graduation photos.',
   },
   {
-    id: 'grad-pure-white-roses',
-    name: 'Alumni Pure White Avalanche Roses',
+    id: 'mini-candy',
+    name: 'Mini Candy',
+    whatsInIt: 'A Mini plus a chocolate and a success card',
     description:
-      'Immaculate Ecuadorian white avalanche roses accented with seeded eucalyptus, signifying integrity and fresh beginnings.',
-    price: 6900,
-    category: 'roses',
+      'Everything in the Mini bouquet (3 roses, 1 chrysanthemum or gypsophila, wrap) tucked with a treat chocolate bar and a printed graduation success card.',
+    price: 500,
+    category: 'candy',
     imageUrl:
-      'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=800&q=80',
-    isFeatured: false,
-    inStock: true,
-    ribbonColors: ['Ivory White', 'Gold', 'Forest Green', 'Navy'],
-    schoolColorTags: ['White', 'Ivory', 'Gold', 'Green'],
-    flowerCount: 16,
-    rating: 4.89,
-    reviewCount: 112,
-    meaning: 'New Beginnings, Wisdom, Integrity, and Boundless Potential',
-  },
-  {
-    id: 'grad-golden-sunburst',
-    name: 'Scholar Petite Golden Sunburst',
-    description:
-      'Easy-to-carry hand bouquet designed specifically for graduates walking across the stage or tossing caps.',
-    price: 5000,
-    category: 'sunflowers',
-    imageUrl:
-      'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=80',
-    isFeatured: false,
-    inStock: true,
-    ribbonColors: ['Gold', 'Black', 'Emerald Green'],
-    schoolColorTags: ['Gold', 'Black', 'Yellow'],
-    flowerCount: 10,
-    rating: 4.85,
-    reviewCount: 79,
-    meaning: 'Radiant Achievement, Joy, and Boundless Hope',
-  },
-  {
-    id: 'grad-double-orchid-lei',
-    name: 'Commencement Double Purple Orchid Lei',
-    description:
-      'Fresh Hawaiian-style ceremonial orchid lei hand-strung with over 100 purple dendrobium florets. The ultimate commencement honor.',
-    price: 6000,
-    category: 'leis',
-    imageUrl:
-      'https://images.unsplash.com/photo-1508615039623-a25605d2b022?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1572454591674-2739f30d8c40?auto=format&fit=crop&w=800&q=80',
     isFeatured: true,
     inStock: true,
-    ribbonColors: ['Royal Purple', 'Navy Blue', 'Crimson Red', 'Gold'],
-    schoolColorTags: ['Purple', 'Navy', 'Gold'],
-    flowerCount: 100,
-    rating: 4.97,
-    reviewCount: 310,
-    meaning: 'Aloha, Deep Honor, Blessing, and Milestone Respect',
+    ribbonColors: ['Gold', 'Crimson Red', 'Royal Blue', 'Purple', 'White'],
+    schoolColorTags: ['Gold', 'Red', 'Blue', 'Purple', 'White'],
+    flowerCount: 4,
+    includesQrCard: false,
+    hasCandy: true,
+    candyBaseId: 'mini',
+    meaning: 'Sweet success — blooms, chocolate, and warm wishes in one wrap.',
   },
   {
-    id: 'grad-sunshine-kukui-lei',
-    name: 'Island Sunshine Orchid & Kukui Nut Lei',
+    id: 'classic',
+    name: 'Classic',
+    whatsInIt: '6 roses, 3 chrysanthemums or gypsophila, wrap, QR card',
     description:
-      'Traditional polished brown kukui nuts interwoven with yellow spray orchid blooms and celebratory ribbons.',
-    price: 6500,
-    category: 'leis',
+      'Six rich Kenyan roses arranged with three lush chrysanthemums or gypsophila sprays in signature wrap, complete with a scannable QR voice/video message card.',
+    price: 600,
+    category: 'classic',
     imageUrl:
-      'https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?auto=format&fit=crop&w=800&q=80',
-    isFeatured: false,
-    inStock: true,
-    ribbonColors: ['Maize Gold', 'Forest Green', 'Black'],
-    schoolColorTags: ['Gold', 'Green', 'Brown'],
-    flowerCount: 40,
-    rating: 4.91,
-    reviewCount: 88,
-    meaning: 'Wisdom, Protection, Enlightenment, and Prosperity',
-  },
-  {
-    id: 'grad-gold-corsage-set',
-    name: 'Commencement Gown Corsage & Boutonniere Set',
-    description:
-      'Matching wrist corsage and magnetic lapel boutonniere crafted with white spray roses, gold ribbon, and Italian ruscus.',
-    price: 4300,
-    category: 'boutonnieres',
-    imageUrl:
-      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
-    isFeatured: false,
-    inStock: true,
-    ribbonColors: ['Gold', 'Silver', 'Navy', 'Burgundy'],
-    schoolColorTags: ['White', 'Gold', 'Silver'],
-    flowerCount: 6,
-    rating: 4.86,
-    reviewCount: 64,
-    meaning: 'Grace, Elegance, and Formal Ceremony Poise',
-  },
-  {
-    id: 'grad-sapphire-roses',
-    name: 'Sapphire & Gold Honors Rose Bouquet',
-    description:
-      'Two-tone tinted blue and golden cream roses celebrating university pride and honorary academic degrees.',
-    price: 8500,
-    category: 'roses',
-    imageUrl:
-      'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1523693916903-027d144a2b7d?auto=format&fit=crop&w=800&q=80',
     isFeatured: true,
     inStock: true,
-    ribbonColors: ['Navy Blue', 'Gold', 'White'],
-    schoolColorTags: ['Blue', 'Gold', 'Navy'],
-    flowerCount: 20,
-    rating: 4.94,
-    reviewCount: 142,
-    meaning: 'Academic Excellence, Truth, and High Distinction',
+    ribbonColors: [
+      'Royal Blue',
+      'Gold',
+      'Crimson Red',
+      'Emerald Green',
+      'Purple',
+    ],
+    schoolColorTags: ['Blue', 'Gold', 'Red', 'Green', 'Purple'],
+    flowerCount: 9,
+    includesQrCard: true,
+    hasCandy: false,
+    candyUpgradeTargetId: 'classic-candy',
+    candyUpgradeLabel:
+      'Upgrade to Classic Candy (+Eclairs, Toffees, Biscuit & Gift Card)',
+    candyUpgradePriceDiff: 150,
+    meaning:
+      'Our signature graduation bouquet with a personal QR voice or video message.',
   },
   {
-    id: 'grad-orchid-boutonniere',
-    name: 'Royal Honors Dendrobium Lapel Boutonniere',
+    id: 'classic-candy',
+    name: 'Classic Candy',
+    whatsInIt: 'A Classic plus Eclairs, toffees, a biscuit and a gift card',
     description:
-      'Single pristine purple dendrobium orchid with satin ribbon collar and magnetic backing to protect graduation gowns.',
-    price: 2500,
-    category: 'boutonnieres',
+      'Our Classic 6-rose & 3-chrysanthemum bouquet with QR message card, loaded with Eclairs, assorted toffees, a celebratory biscuit pack, and a keepsake gift card.',
+    price: 750,
+    category: 'candy',
     imageUrl:
-      'https://images.unsplash.com/photo-1507290439931-a861b5a38200?auto=format&fit=crop&w=800&q=80',
-    isFeatured: false,
-    inStock: true,
-    ribbonColors: ['Purple', 'Navy', 'Silver', 'Gold'],
-    schoolColorTags: ['Purple', 'Silver'],
-    flowerCount: 3,
-    rating: 4.82,
-    reviewCount: 52,
-    meaning: 'Dignity, Academic Focus, and High Commendation',
-  },
-  {
-    id: 'grad-grand-chancellor',
-    name: 'Chancellor Grand 36-Stem Celebration Cascade',
-    description:
-      'Our crowning glory: 36 stems of garden roses, calla lilies, sunflowers, and delphiniums in a massive celebratory cascade.',
-    price: 14000,
-    category: 'mixed',
-    imageUrl:
-      'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1596438459194-f275f413d6ff?auto=format&fit=crop&w=800&q=80',
     isFeatured: true,
     inStock: true,
-    ribbonColors: ['Double Gold & Navy', 'Crimson & Silver', 'Imperial Purple'],
-    schoolColorTags: ['Gold', 'Blue', 'Purple', 'Red'],
-    flowerCount: 36,
-    rating: 5.0,
-    reviewCount: 96,
-    meaning: 'Highest Honors, Pinnacle of Success, and Supreme Pride',
+    ribbonColors: [
+      'Crimson Red',
+      'Gold',
+      'Royal Blue',
+      'Purple',
+      'Emerald Green',
+    ],
+    schoolColorTags: ['Red', 'Gold', 'Blue', 'Purple', 'Green'],
+    flowerCount: 9,
+    includesQrCard: true,
+    hasCandy: true,
+    candyBaseId: 'classic',
+    meaning:
+      'The ultimate crowd-pleaser — fresh roses, sweet treats, and a QR video/voice message.',
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    whatsInIt: '12 roses, 5 chrysanthemums, double wrap, QR card',
+    description:
+      'A full dozen long-stem Kenyan roses and five full chrysanthemums dressed in a statement double wrap with satin school ribbon and a scannable QR voice/video message card.',
+    price: 1500,
+    category: 'premium',
+    imageUrl:
+      'https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=800&q=80',
+    isFeatured: true,
+    inStock: true,
+    ribbonColors: [
+      'Gold & Navy',
+      'Crimson & Gold',
+      'Emerald & Gold',
+      'Royal Purple',
+      'Pure White',
+    ],
+    schoolColorTags: ['Gold', 'Blue', 'Red', 'Green', 'Purple', 'White'],
+    flowerCount: 17,
+    includesQrCard: true,
+    hasCandy: false,
+    meaning:
+      'Hongera Sana! Our grandest statement bouquet for a once-in-a-lifetime milestone.',
   },
 ]
+
+function filterCatalogItems(
+  items: Flower[],
+  category?: FlowerCategory,
+  schoolColor?: string,
+): Flower[] {
+  let data = [...items].sort((a, b) => a.price - b.price)
+
+  if (category === 'bestsellers') {
+    data = data.filter((item) => item.isFeatured)
+  } else if (category && category !== 'all') {
+    data = data.filter((item) => item.category === category)
+  }
+
+  if (schoolColor && schoolColor !== 'all') {
+    const colorLower = schoolColor.toLowerCase()
+    data = data.filter((item) =>
+      item.schoolColorTags.some((tag) => tag.toLowerCase() === colorLower),
+    )
+  }
+
+  return data
+}
 
 export async function fetchFlowers(
   category?: FlowerCategory,
@@ -293,67 +210,60 @@ export async function fetchFlowers(
 ): Promise<Flower[]> {
   try {
     const flowersRef = collection(db, 'flowers')
-    const q =
-      category && category !== 'all' && category !== 'bestsellers'
-        ? query(flowersRef, where('category', '==', category))
-        : flowersRef
-
-    const snapshot = await getDocs(q)
+    const snapshot = await getDocs(flowersRef)
 
     if (!snapshot.empty) {
-      const rawData = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }))
-      const parsed = FlowersListSchema.safeParse(rawData)
-      if (parsed.success) {
-        return parsed.data
+      const validDocs: Flower[] = []
+      for (const docSnap of snapshot.docs) {
+        if (!OFFICIAL_PRODUCT_IDS.has(docSnap.id)) continue
+        const parsed = FlowerSchema.safeParse({
+          id: docSnap.id,
+          ...docSnap.data(),
+        })
+        if (parsed.success) {
+          validDocs.push(parsed.data)
+        }
       }
-      logError(
-        normalizeError(
-          parsed.error,
-          'Invalid flower data received from remote database.',
-        ),
-      )
+
+      if (validDocs.length > 0) {
+        // Merge any missing official products from SEEDED_FLOWERS so all 6 are always present
+        const byId = new Map(validDocs.map((f) => [f.id, f]))
+        const merged = SEEDED_FLOWERS.map((seed) => byId.get(seed.id) ?? seed)
+        return filterCatalogItems(merged, category, schoolColor)
+      }
     }
 
-    // Fallback to seeded catalog
-    let data = [...SEEDED_FLOWERS]
-
-    if (category === 'bestsellers') {
-      data = data.filter((item) => item.isFeatured)
-    } else if (category && category !== 'all') {
-      data = data.filter((item) => item.category === category)
-    }
-
-    if (schoolColor && schoolColor !== 'all') {
-      const colorLower = schoolColor.toLowerCase()
-      data = data.filter((item) =>
-        item.schoolColorTags.some((tag) => tag.toLowerCase() === colorLower),
-      )
-    }
-
-    return FlowersListSchema.parse(data)
+    return filterCatalogItems(
+      FlowersListSchema.parse(SEEDED_FLOWERS),
+      category,
+      schoolColor,
+    )
   } catch (error) {
     const appError = normalizeError(
       error,
       'Unable to load flower bouquets at this time.',
     )
     logError(appError, { feature: 'flowers', action: 'fetchFlowers' })
-    return FlowersListSchema.parse(SEEDED_FLOWERS)
+    return filterCatalogItems(
+      FlowersListSchema.parse(SEEDED_FLOWERS),
+      category,
+      schoolColor,
+    )
   }
 }
 
 export async function fetchFlowerById(id: string): Promise<Flower | null> {
   try {
-    const flowerDoc = await getDoc(doc(db, 'flowers', id))
-    if (flowerDoc.exists()) {
-      const parsed = FlowerSchema.safeParse({
-        id: flowerDoc.id,
-        ...flowerDoc.data(),
-      })
-      if (parsed.success) {
-        return parsed.data
+    if (OFFICIAL_PRODUCT_IDS.has(id)) {
+      const flowerDoc = await getDoc(doc(db, 'flowers', id))
+      if (flowerDoc.exists()) {
+        const parsed = FlowerSchema.safeParse({
+          id: flowerDoc.id,
+          ...flowerDoc.data(),
+        })
+        if (parsed.success) {
+          return parsed.data
+        }
       }
     }
 
@@ -369,4 +279,44 @@ export async function fetchFlowerById(id: string): Promise<Flower | null> {
     const fallback = SEEDED_FLOWERS.find((f) => f.id === id)
     return fallback ? FlowerSchema.parse(fallback) : null
   }
+}
+
+export async function upsertFlowerProduct(flower: Flower): Promise<Flower> {
+  const validated = FlowerSchema.parse(flower)
+  await setDoc(doc(db, 'flowers', validated.id), validated, { merge: true })
+  return validated
+}
+
+export async function syncOfficialMenuToFirestore(): Promise<Flower[]> {
+  const flowersRef = collection(db, 'flowers')
+  const existingSnap = await getDocs(flowersRef)
+
+  // Remove any legacy prototype docs not in OFFICIAL_PRODUCT_IDS
+  await Promise.all(
+    existingSnap.docs
+      .filter((d) => !OFFICIAL_PRODUCT_IDS.has(d.id))
+      .map((d) => deleteDoc(doc(db, 'flowers', d.id))),
+  )
+
+  // Write the 6 official products
+  await Promise.all(
+    SEEDED_FLOWERS.map((product) =>
+      setDoc(doc(db, 'flowers', product.id), product, { merge: true }),
+    ),
+  )
+
+  return SEEDED_FLOWERS
+}
+
+export async function uploadFlowerPhoto(
+  flowerId: string,
+  file: File,
+): Promise<string> {
+  const safeExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const storageRef = ref(
+    storage,
+    `flowers/${flowerId}-${Date.now()}.${safeExt}`,
+  )
+  await uploadBytes(storageRef, file, { contentType: file.type })
+  return getDownloadURL(storageRef)
 }

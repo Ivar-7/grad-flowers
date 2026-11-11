@@ -14,12 +14,10 @@ export interface UseFlowersOptions {
 }
 
 export function useFlowers(options: UseFlowersOptions = {}) {
-  // Remote data state
   const [remoteFlowers, setRemoteFlowers] = useState<Flower[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<AppError | null>(null)
 
-  // Local interaction state
   const [selectedCategory, setSelectedCategory] = useState<FlowerCategory>(
     options.initialCategory ?? 'all',
   )
@@ -27,9 +25,8 @@ export function useFlowers(options: UseFlowersOptions = {}) {
     options.initialColor ?? 'all',
   )
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [sortBy, setSortBy] = useState<FlowerSortOption>('featured')
+  const [sortBy, setSortBy] = useState<FlowerSortOption>('price-asc')
 
-  // Asynchronous synchronization with external Firestore database
   useEffect(() => {
     let isMounted = true
 
@@ -68,7 +65,6 @@ export function useFlowers(options: UseFlowersOptions = {}) {
       })
   }, [selectedCategory])
 
-  // Filtered and sorted client view
   const filteredFlowers = useMemo(() => {
     let result = [...remoteFlowers]
 
@@ -90,8 +86,8 @@ export function useFlowers(options: UseFlowersOptions = {}) {
       result = result.filter(
         (f) =>
           f.name.toLowerCase().includes(queryLower) ||
+          f.whatsInIt.toLowerCase().includes(queryLower) ||
           f.description.toLowerCase().includes(queryLower) ||
-          f.meaning.toLowerCase().includes(queryLower) ||
           f.schoolColorTags.some((tag) =>
             tag.toLowerCase().includes(queryLower),
           ),
@@ -100,17 +96,15 @@ export function useFlowers(options: UseFlowersOptions = {}) {
 
     result.sort((a, b) => {
       switch (sortBy) {
-        case 'price-asc':
-          return a.price - b.price
         case 'price-desc':
           return b.price - a.price
-        case 'rating':
-          return b.rating - a.rating
         case 'name':
           return a.name.localeCompare(b.name)
         case 'featured':
-        default:
           return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)
+        case 'price-asc':
+        default:
+          return a.price - b.price
       }
     })
 
@@ -128,7 +122,6 @@ export function useFlowers(options: UseFlowersOptions = {}) {
     isEmpty,
     error,
     refetch,
-    // Filter controls
     selectedCategory,
     setSelectedCategory,
     selectedColor,

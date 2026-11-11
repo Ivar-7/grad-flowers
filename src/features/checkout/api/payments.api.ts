@@ -19,10 +19,7 @@ interface StartPayheroPaymentRequest {
   amount: number
   phoneNumber: string
   description: string
-  metadata: {
-    orderId: string
-    onConfirm: { path: string; fields: { status: 'confirmed' } }[]
-  }
+  orderId: string
 }
 
 const startPayheroPaymentCall = httpsCallable<
@@ -33,24 +30,11 @@ const startPayheroPaymentCall = httpsCallable<
 export async function startPayheroPayment(
   input: StartPayheroPaymentInput,
 ): Promise<string> {
-  const onConfirm = [
-    {
-      path: `orders/${input.orderId}`,
-      fields: { status: 'confirmed' as const },
-    },
-  ]
-  if (input.userId) {
-    onConfirm.push({
-      path: `users/${input.userId}/orders/${input.orderId}`,
-      fields: { status: 'confirmed' as const },
-    })
-  }
-
   const result = await startPayheroPaymentCall({
     amount: input.amount,
     phoneNumber: input.phoneNumber,
     description: input.description,
-    metadata: { orderId: input.orderId, onConfirm },
+    orderId: input.orderId,
   })
 
   return StartPaymentResponseSchema.parse(result.data).paymentId

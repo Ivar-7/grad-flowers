@@ -26,6 +26,7 @@ export function CheckoutPage() {
 
   const [deliveryDetails, setDeliveryDetails] = useState<DeliveryDetails>({
     recipientName: '',
+    recipientEmail: '',
     recipientPhone: '',
     campusOrVenue: '',
     venueAddress: '',
@@ -63,6 +64,9 @@ export function CheckoutPage() {
 
   const handleDeliverySubmit = (details: DeliveryDetails) => {
     setDeliveryDetails(details)
+    setPaymentDetails((prev) => ({
+      phoneNumber: prev.phoneNumber || details.recipientPhone,
+    }))
     setCurrentStep('payment')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }

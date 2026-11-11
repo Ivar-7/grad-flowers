@@ -22,7 +22,7 @@ export function LoadingState({
       className={`${containerClasses} ${className}`}
     >
       <Loader2
-        className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400 mb-3"
+        className="h-8 w-8 animate-spin text-rose-600 dark:text-rose-400 mb-3"
         aria-hidden="true"
       />
       <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">

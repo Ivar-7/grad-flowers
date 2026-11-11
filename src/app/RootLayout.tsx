@@ -5,6 +5,7 @@ import { Footer } from '@/shared/ui/Footer'
 import { LoadingState } from '@/shared/ui/LoadingState'
 import { ErrorBoundary } from '@/shared/errors/ErrorBoundary'
 import { CartDrawer } from '@/features/cart/components/CartDrawer'
+import { QuickOrderModal } from '@/features/checkout/components/QuickOrderModal'
 
 export function RootLayout() {
   return (
@@ -21,6 +22,7 @@ export function RootLayout() {
       </main>
       <Footer />
       <CartDrawer />
+      <QuickOrderModal />
     </div>
   )
 }

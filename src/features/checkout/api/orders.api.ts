@@ -6,44 +6,54 @@
   query,
   orderBy,
   setDoc,
+  updateDoc,
+  where,
 } from 'firebase/firestore'
 import { db } from '@/shared/firebase/firebase'
 import { normalizeError } from '@/shared/errors/error-normalizer'
 import { logError } from '@/shared/errors/error-logger'
-import type { Order } from '../types/checkout.types'
+import type { Order, OrderStatus } from '../types/checkout.types'
 
-const LOCAL_ORDERS_KEY = 'grad_flowers_cached_orders'
+const SESSION_RECEIPT_KEY = 'grad_flowers_last_orders_session_v1'
 
 function getTimeSlotDescription(slot: string): string {
   switch (slot) {
     case 'morning-ceremony':
-      return '7:30 AM - 9:30 AM (Morning Ceremony Call)'
+      return '7:00 AM - 9:30 AM (Morning Processional Pickup)'
     case 'midday-ceremony':
-      return '11:30 AM - 1:30 PM (Midday Commencement Call)'
+      return '10:00 AM - 1:00 PM (Midday Graduation Pickup)'
     case 'afternoon-ceremony':
-      return '3:00 PM - 5:00 PM (Afternoon Diploma Call)'
+      return '1:30 PM - 4:30 PM (Afternoon Photo Call Pickup)'
     case 'evening-banquet':
-      return '6:00 PM - 8:00 PM (Evening Honors Banquet)'
+      return '5:00 PM - 7:30 PM (Evening Celebration Pickup)'
     default:
-      return 'Ceremony Morning Window'
+      return 'Graduation Station Window'
   }
 }
 
-function getStoredOrders(): Order[] {
+function getSessionReceipts(): Order[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = localStorage.getItem(LOCAL_ORDERS_KEY)
+    const raw =
+      localStorage.getItem(SESSION_RECEIPT_KEY) ??
+      sessionStorage.getItem(SESSION_RECEIPT_KEY)
     return raw ? (JSON.parse(raw) as Order[]) : []
   } catch {
     return []
   }
 }
 
-function cacheOrderLocally(order: Order): void {
+export function saveSessionReceipt(order: Order): void {
+  if (typeof window === 'undefined') return
   try {
-    const existing = getStoredOrders()
-    const updated = [order, ...existing.filter((o) => o.id !== order.id)]
-    localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(updated))
+    const existing = getSessionReceipts()
+    const updated = [order, ...existing.filter((o) => o.id !== order.id)].slice(
+      0,
+      20,
+    )
+    const serialized = JSON.stringify(updated)
+    localStorage.setItem(SESSION_RECEIPT_KEY, serialized)
+    sessionStorage.setItem(SESSION_RECEIPT_KEY, serialized)
   } catch {
     // Ignore storage quota
   }
@@ -62,19 +72,19 @@ export async function createOrder(
   const order: Order = {
     ...data,
     id,
+    referrer: data.referrer ?? null,
     status: 'pending-payment',
     createdAt,
     estimatedDeliveryWindow,
   }
 
-  const orderDocRef = doc(db, 'orders', id)
-  await setDoc(orderDocRef, order)
+  await setDoc(doc(db, 'orders', id), order)
 
   if (data.userId) {
     await setDoc(doc(db, 'users', data.userId, 'orders', id), order)
   }
 
-  cacheOrderLocally(order)
+  saveSessionReceipt(order)
 
   return order
 }
@@ -87,7 +97,10 @@ export async function fetchOrderById(id: string): Promise<Order | null> {
     }
   } catch (error) {
     logError(
-      normalizeError(error, 'Could not retrieve order from cloud database.'),
+      normalizeError(
+        error,
+        'Order read restricted to owner or staff; checking current session receipt.',
+      ),
       {
         feature: 'checkout',
         action: 'fetchOrderById',
@@ -96,34 +109,68 @@ export async function fetchOrderById(id: string): Promise<Order | null> {
     )
   }
 
-  // Check local cache fallback
-  const localOrders = getStoredOrders()
-  const match = localOrders.find((o) => o.id === id)
-  return match ?? null
+  const sessionOrders = getSessionReceipts()
+  return sessionOrders.find((o) => o.id === id) ?? null
 }
 
-export async function fetchUserOrders(userId: string): Promise<Order[]> {
+export async function fetchUserOrders(userId: string | null): Promise<Order[]> {
+  if (!userId) {
+    return getSessionReceipts()
+  }
+
   try {
     const userOrdersRef = collection(db, 'users', userId, 'orders')
     const q = query(userOrdersRef, orderBy('createdAt', 'desc'))
     const snap = await getDocs(q)
 
     if (!snap.empty) {
-      return snap.docs
-        .map((d) => d.data() as Order)
-        .filter((o) => o.status !== 'pending-payment')
+      return snap.docs.map((d) => d.data() as Order)
     }
+
+    // Also check root orders collection where userId == current user
+    const rootQuery = query(
+      collection(db, 'orders'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc'),
+    )
+    const rootSnap = await getDocs(rootQuery)
+    return rootSnap.docs.map((d) => d.data() as Order)
   } catch (error) {
-    logError(normalizeError(error, 'Could not load past orders from cloud.'), {
+    logError(normalizeError(error, 'Could not load orders from cloud.'), {
       feature: 'orders',
       action: 'fetchUserOrders',
       metadata: { userId },
     })
+    return getSessionReceipts()
   }
+}
 
-  // Fallback to local storage filter
-  const local = getStoredOrders()
-  return local.filter(
-    (o) => o.status !== 'pending-payment' && (o.userId === userId || !o.userId),
-  )
+export async function fetchAllOrdersForStaff(): Promise<Order[]> {
+  try {
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => d.data() as Order)
+  } catch (error) {
+    const appError = normalizeError(
+      error,
+      'Unable to load orders. Staff or Admin permissions required.',
+    )
+    logError(appError, { feature: 'staff', action: 'fetchAllOrdersForStaff' })
+    throw appError
+  }
+}
+
+export async function updateOrderStatusForStaff(
+  orderId: string,
+  status: OrderStatus,
+  userId?: string | null,
+): Promise<void> {
+  await updateDoc(doc(db, 'orders', orderId), { status })
+  if (userId) {
+    try {
+      await updateDoc(doc(db, 'users', userId, 'orders', orderId), { status })
+    } catch {
+      // User subcollection doc may not exist for guest orders
+    }
+  }
 }

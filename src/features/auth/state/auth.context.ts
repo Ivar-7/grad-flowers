@@ -10,6 +10,8 @@ export interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
+  isStaffOrAdmin: boolean
+  isAdmin: boolean
   login: (credentials: AuthCredentials) => Promise<AuthUser>
   register: (input: SignUpInput) => Promise<AuthUser>
   loginWithGoogle: () => Promise<AuthUser>

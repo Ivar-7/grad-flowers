@@ -59,6 +59,28 @@ export const routes: RouteObject[] = [
         },
       },
       {
+        path: 'leads',
+        lazy: async () => {
+          const module = await import('@/features/leads/pages/LeadsPage')
+          return { Component: module.LeadsPage }
+        },
+      },
+      {
+        path: 'staff',
+        lazy: async () => {
+          const module =
+            await import('@/features/staff/pages/StaffDashboardPage')
+          return { Component: module.StaffDashboardPage }
+        },
+      },
+      {
+        path: 'qr/:id',
+        lazy: async () => {
+          const module = await import('@/features/qr/pages/QrMessagePage')
+          return { Component: module.QrMessagePage }
+        },
+      },
+      {
         path: 'auth',
         lazy: async () => {
           const module = await import('@/features/auth/pages/AuthPage')

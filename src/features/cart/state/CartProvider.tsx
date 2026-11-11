@@ -5,30 +5,15 @@
   useMemo,
   type ReactNode,
 } from 'react'
-import type { CartItem, CartSummary, PromoCode } from '../types/cart.types'
+import type {
+  CartItem,
+  CartSummary,
+  QuickOrderOptions,
+} from '../types/cart.types'
 import { CartItemListSchema } from '../types/cart.schema'
 import { CartContext, type CartContextValue } from './cart.context'
 
-const CART_STORAGE_KEY = 'grad_flowers_cart_v1'
-
-const VALID_PROMO_CODES: Record<string, PromoCode> = {
-  GRAD2026: {
-    code: 'GRAD2026',
-    discountPercentage: 15,
-    description: '15% Off Graduation Commencement Special',
-  },
-  CAMPUS: {
-    code: 'CAMPUS',
-    discountPercentage: 0,
-    freeDelivery: true,
-    description: 'Free Direct Campus Ceremony Delivery',
-  },
-  HONORS10: {
-    code: 'HONORS10',
-    discountPercentage: 10,
-    description: '10% Honor Society & Alumni Discount',
-  },
-}
+const CART_STORAGE_KEY = 'grad_flowers_cart_v2'
 
 export interface CartProviderProps {
   children: ReactNode
@@ -49,9 +34,12 @@ export function CartProvider({ children }: CartProviderProps) {
   })
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null)
+  const [quickOrder, setQuickOrder] = useState<
+    { isOpen: boolean } & QuickOrderOptions
+  >({
+    isOpen: false,
+  })
 
-  // Persist items to local storage
   useEffect(() => {
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
@@ -63,6 +51,21 @@ export function CartProvider({ children }: CartProviderProps) {
   const openDrawer = useCallback(() => setIsDrawerOpen(true), [])
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), [])
 
+  const openQuickOrder = useCallback((options?: QuickOrderOptions) => {
+    setIsDrawerOpen(false)
+    setQuickOrder({
+      isOpen: true,
+      flowerId: options?.flowerId,
+      venue: options?.venue,
+      date: options?.date,
+      schoolColor: options?.schoolColor,
+    })
+  }, [])
+
+  const closeQuickOrder = useCallback(() => {
+    setQuickOrder((prev) => ({ ...prev, isOpen: false }))
+  }, [])
+
   const addItem = useCallback(
     (newItem: Omit<CartItem, 'id' | 'totalPrice'>) => {
       const addOnsTotal = newItem.addOns.reduce(
@@ -72,7 +75,7 @@ export function CartProvider({ children }: CartProviderProps) {
       const singleItemPrice = newItem.unitPrice + addOnsTotal
       const totalPrice = singleItemPrice * newItem.quantity
 
-      const id = `${newItem.flowerId}-${newItem.tier}-${newItem.ribbonColor}-${Date.now()}`
+      const id = `${newItem.flowerId}-${newItem.ribbonColor}-${Date.now()}`
 
       const fullItem: CartItem = {
         ...newItem,
@@ -81,14 +84,13 @@ export function CartProvider({ children }: CartProviderProps) {
       }
 
       setItems((prev) => {
-        // If exact same config exists, increment quantity
         const existingIndex = prev.findIndex(
           (p) =>
             p.flowerId === newItem.flowerId &&
-            p.tier === newItem.tier &&
             p.ribbonColor === newItem.ribbonColor &&
             (p.ribbonCustomText ?? '') === (newItem.ribbonCustomText ?? '') &&
             (p.cardMessage ?? '') === (newItem.cardMessage ?? '') &&
+            (p.qrMessageId ?? '') === (newItem.qrMessageId ?? '') &&
             p.addOns.length === newItem.addOns.length &&
             p.addOns.every(
               (addOn, index) => addOn.id === newItem.addOns[index]?.id,
@@ -113,7 +115,6 @@ export function CartProvider({ children }: CartProviderProps) {
         return [...prev, fullItem]
       })
 
-      // Open drawer on add for immediate visual feedback
       setIsDrawerOpen(true)
     },
     [],
@@ -147,55 +148,15 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const clearCart = useCallback(() => {
     setItems([])
-    setAppliedPromo(null)
   }, [])
 
-  const applyPromoCode = useCallback((code: string): boolean => {
-    const normalized = code.trim().toUpperCase()
-    if (normalized in VALID_PROMO_CODES) {
-      setAppliedPromo(VALID_PROMO_CODES[normalized] ?? null)
-      return true
-    }
-    return false
-  }, [])
-
-  const removePromoCode = useCallback(() => {
-    setAppliedPromo(null)
-  }, [])
-
-  // Calculate totals and summary
   const summary: CartSummary = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0)
-    let discountAmount = 0
-
-    if (appliedPromo && appliedPromo.discountPercentage > 0) {
-      discountAmount = Math.round(
-        (subtotal * appliedPromo.discountPercentage) / 100,
-      )
-    }
-
-    // Free delivery over KSh 7,500 or with promo code
-    const baseDelivery =
-      subtotal > 7500 || appliedPromo?.freeDelivery ? 0 : 1000
-    const deliveryFee = items.length === 0 ? 0 : baseDelivery
-
-    const taxableAmount = Math.max(0, subtotal - discountAmount)
-    const estimatedTax =
-      items.length === 0 ? 0 : Math.round(taxableAmount * 0.08)
-
-    const total = Math.max(
-      0,
-      subtotal - discountAmount + deliveryFee + estimatedTax,
-    )
-
     return {
       subtotal,
-      discountAmount,
-      deliveryFee,
-      estimatedTax,
-      total,
+      total: subtotal,
     }
-  }, [items, appliedPromo])
+  }, [items])
 
   const itemCount = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity, 0),
@@ -213,10 +174,10 @@ export function CartProvider({ children }: CartProviderProps) {
     removeItem,
     updateQuantity,
     clearCart,
-    appliedPromo,
-    applyPromoCode,
-    removePromoCode,
     summary,
+    quickOrder,
+    openQuickOrder,
+    closeQuickOrder,
   }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

@@ -175,10 +175,6 @@ export const payheroCallback = onRequest(async (req, res) => {
  * Returns: { status }
  */
 export const checkPaymentStatus = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Sign in required.')
-  }
-
   const paymentId = request.data?.paymentId as string | undefined
   if (!paymentId) {
     throw new HttpsError('invalid-argument', 'paymentId is required.')
@@ -191,7 +187,11 @@ export const checkPaymentStatus = onCall(async (request) => {
 
   const paymentData = paymentSnap.data() as Record<string, unknown>
 
-  if (paymentData.userId !== request.auth.uid) {
+  if (
+    paymentData.userId &&
+    request.auth?.uid &&
+    paymentData.userId !== request.auth.uid
+  ) {
     throw new HttpsError('permission-denied', 'Access denied.')
   }
 
