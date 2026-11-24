@@ -10,9 +10,15 @@ import {
   Phone,
   GraduationCap,
   QrCode,
+  Truck,
+  Users,
+  Plus,
 } from 'lucide-react'
 import { fetchOrderById } from '../api/orders.api'
 import type { Order, OrderStatus } from '../types/checkout.types'
+import { useCart } from '@/features/cart/state/useCart'
+import { SEEDED_FLOWERS } from '@/features/flowers/api/flowers.api'
+import { SITE_CONFIG } from '@/shared/config/site.config'
 import { getQrCardUrl } from '@/features/qr/api/qr.api'
 import { QrCodeDisplay } from '@/features/qr/components/QrCodeDisplay'
 import { Card } from '@/shared/ui/Card'
@@ -40,6 +46,7 @@ function isStepDone(current: OrderStatus, required: OrderStatus): boolean {
 
 export function OrderSuccessPage() {
   const { orderId } = useParams<{ orderId: string }>()
+  const { openQuickOrder } = useCart()
   const [order, setOrder] = useState<Order | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -79,7 +86,7 @@ export function OrderSuccessPage() {
       <div className="mx-auto max-w-3xl px-4 py-16">
         <EmptyState
           title="Order Pass Not Found"
-          description="Only the order owner or GradFlowers staff can view this receipt."
+          description={`Only the order owner or ${SITE_CONFIG.brandName} staff can view this receipt.`}
           action={
             <Link to="/flowers">
               <Button variant="primary">Return to Menu</Button>
@@ -90,11 +97,19 @@ export function OrderSuccessPage() {
     )
   }
 
+  const isDelivery = order.delivery.fulfillmentType === 'address-delivery'
+  const deliveryFee = order.summary.deliveryFee ?? 0
+  const smallerBouquetSuggestions = SEEDED_FLOWERS.filter((f) =>
+    ['single', 'mini', 'mini-candy'].includes(f.id),
+  )
+
   const timelineSteps = [
     {
       step: 1,
       label: 'Order Logged',
-      time: 'Station reservation created',
+      time: isDelivery
+        ? 'Delivery order created'
+        : 'Pickup reservation created',
       done: true,
     },
     {
@@ -108,13 +123,13 @@ export function OrderSuccessPage() {
     },
     {
       step: 3,
-      label: 'Bouquet Wrapped',
-      time: 'Fresh roses & ribbon prepared',
+      label: 'Bouquet Prepared',
+      time: 'Fresh roses & ribbon arranged',
       done: isStepDone(order.status, 'florist-arranging'),
     },
     {
       step: 4,
-      label: 'Ready at Station',
+      label: isDelivery ? 'Out for Delivery' : 'Ready for Pickup',
       time: order.delivery.venueAddress,
       done: isStepDone(order.status, 'out-for-delivery'),
     },
@@ -147,9 +162,18 @@ export function OrderSuccessPage() {
         </h1>
 
         <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400 max-w-lg mx-auto">
-          Present this Order Code at{' '}
-          <strong>{order.delivery.venueAddress}</strong> (
-          {order.delivery.campusOrVenue}) to collect your bouquet.
+          {isDelivery ? (
+            <>
+              Delivering to <strong>{order.delivery.venueAddress}</strong> (
+              {order.delivery.campusOrVenue}).
+            </>
+          ) : (
+            <>
+              Present this Order Code for pickup at{' '}
+              <strong>{order.delivery.campusOrVenue}</strong>. We will confirm
+              your vendor handoff on WhatsApp.
+            </>
+          )}
         </p>
 
         <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-sm font-mono text-neutral-700 dark:text-neutral-300">
@@ -159,6 +183,38 @@ export function OrderSuccessPage() {
           </strong>
         </div>
       </div>
+
+      {/* Smart Fulfillment Routing Banner */}
+      <Card className="p-5 mb-8 border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/20">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+            {order.fulfillment?.route === 'vendor-connected' ? (
+              <Users className="h-5 w-5" />
+            ) : (
+              <Truck className="h-5 w-5" />
+            )}
+          </span>
+          <div className="space-y-1 text-xs sm:text-sm">
+            <h3 className="font-extrabold text-neutral-900 dark:text-white">
+              {order.fulfillment?.route === 'vendor-connected'
+                ? `Connected with Graduation Vendor: ${order.fulfillment.assignedVendorName ?? 'Available Vendor'}`
+                : order.fulfillment?.route === 'scheduled-2-4-days'
+                  ? 'Fresh Sourcing Scheduled (2–4 Days Delivery)'
+                  : order.fulfillment?.route === 'same-day-delivery'
+                    ? 'In Stock — Eligible for Same-Day Delivery'
+                    : isDelivery
+                      ? 'Delivery Routing Ready (Same-Day if In Stock, or 2–4 Days)'
+                      : 'Matching You with an Available Graduation Vendor'}
+            </h3>
+            <p className="text-neutral-600 dark:text-neutral-300">
+              {order.fulfillment?.estimatedTimeline ??
+                (isDelivery
+                  ? 'Once M-Pesa confirms, in-stock bouquets dispatch same day (small delivery fee applies). Out-of-stock bouquets are freshly sourced within 2–4 days.'
+                  : 'Once M-Pesa confirms, we connect you with an available vendor at your ceremony or arrange same-day / 2–4 day delivery if no vendor is on site.')}
+            </p>
+          </div>
+        </div>
+      </Card>
 
       {/* Live Station Timeline */}
       <Card className="p-6 sm:p-8 mb-8 border-neutral-200 dark:border-neutral-800">
@@ -315,12 +371,16 @@ export function OrderSuccessPage() {
 
             <div className="pt-3 space-y-1 text-xs text-neutral-500">
               <div className="flex justify-between">
-                <span>Menu Price</span>
+                <span>Bouquets Subtotal</span>
                 <span>{formatKsh(order.summary.subtotal)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Station Collection</span>
-                <span className="text-emerald-600 font-semibold">FREE</span>
+                <span>
+                  {isDelivery ? 'Address Delivery' : 'Graduation Pickup'}
+                </span>
+                <span className="text-emerald-600 font-semibold">
+                  {deliveryFee > 0 ? formatKsh(deliveryFee) : 'FREE'}
+                </span>
               </div>
               <div className="flex justify-between font-bold text-neutral-900 dark:text-white text-sm pt-2">
                 <span>Total (M-Pesa)</span>
@@ -332,6 +392,55 @@ export function OrderSuccessPage() {
           </div>
         </Card>
       </div>
+
+      {/* Post-Order Upsell: Suggest smaller bouquets */}
+      <Card className="p-6 mb-8 border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="text-base font-extrabold text-neutral-900 dark:text-white flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              <span>Add a smaller bouquet for a friend or classmate?</span>
+            </h3>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400">
+              Tap any smaller bouquet below to add another celebratory gift in
+              seconds.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {smallerBouquetSuggestions.map((prod) => (
+            <div
+              key={prod.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-amber-200/80 dark:border-amber-900/60 bg-white dark:bg-neutral-900 p-3"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img
+                  src={prod.imageUrl}
+                  alt={prod.name}
+                  className="h-12 w-12 rounded-lg object-cover shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-neutral-900 dark:text-white truncate">
+                    {prod.name}
+                  </p>
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                    {formatKsh(prod.price)}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => openQuickOrder({ flowerId: prod.id })}
+                leftIcon={<Plus className="h-3.5 w-3.5" />}
+              >
+                Order
+              </Button>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <button

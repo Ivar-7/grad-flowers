@@ -3,6 +3,11 @@ import { onSchedule } from 'firebase-functions/v2/scheduler'
 import * as logger from 'firebase-functions/logger'
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { queryPayheroPaymentStatus } from '../payhero/confirmPayheroPayment.js'
+import {
+  computeAuthoritativeOrderTotal,
+  REFERRAL_COMMISSION_PER_ORDER_KSH,
+  SAME_DAY_DELIVERY_FEE_KSH,
+} from './pricing.js'
 
 const db = getFirestore()
 const MIN_PENDING_AGE_MS = 2 * 60 * 1000
@@ -22,6 +27,15 @@ interface SweepSummary {
   errors: number
 }
 
+interface FulfillmentAssignment {
+  route: 'vendor-connected' | 'same-day-delivery' | 'scheduled-2-4-days'
+  assignedVendorCode?: string
+  assignedVendorName?: string
+  assignedVendorStation?: string
+  estimatedDeliveryFeeKsh?: number
+  estimatedTimeline: string
+}
+
 function createdAtMillis(data: Record<string, unknown>): number | null {
   const createdAt = data.createdAt
   if (createdAt instanceof Timestamp) return createdAt.toMillis()
@@ -39,10 +53,98 @@ async function queryProviderStatus(
 }
 
 /**
+ * Post-payment smart fulfillment routing:
+ * 1. If the buyer ordered for graduation pickup, connect them with an
+ *    available vendor who has stock.
+ * 2. Otherwise (address delivery or no graduation vendor available), check
+ *    catalog stock: if in stock -> same-day delivery (small Bolt-based fee);
+ *    if out of stock -> 2–4 day delivery while we source and prepare.
+ */
+async function resolveFulfillmentRoute(
+  orderData: Record<string, unknown>,
+  allInStock: boolean,
+  totalItemCount: number,
+): Promise<FulfillmentAssignment> {
+  const delivery = (orderData.delivery ?? {}) as Record<string, unknown>
+  const fulfillmentType =
+    delivery.fulfillmentType === 'address-delivery'
+      ? 'address-delivery'
+      : 'event-pickup'
+  const campus =
+    typeof delivery.campusOrVenue === 'string'
+      ? delivery.campusOrVenue.toLowerCase()
+      : ''
+
+  if (fulfillmentType === 'event-pickup') {
+    const sellersSnap = await db.collection('sellers').get()
+    const availableVendors = sellersSnap.docs
+      .map((d): Record<string, unknown> & { id: string } => ({
+        ...(d.data() as Record<string, unknown>),
+        id: d.id,
+      }))
+      .filter((s) => {
+        if (s.available === false) return false
+        const allocated =
+          typeof s.allocatedStock === 'number' ? s.allocatedStock : 0
+        const manualSold =
+          typeof s.manualSoldCount === 'number' ? s.manualSoldCount : 0
+        const onlineOrders =
+          typeof s.ordersCount === 'number' ? s.ordersCount : 0
+        const remaining = allocated - manualSold - onlineOrders
+        return remaining >= totalItemCount
+      })
+
+    const matchedVendor =
+      availableVendors.find((v) => {
+        const st = typeof v.station === 'string' ? v.station.toLowerCase() : ''
+        return campus && st && (st.includes(campus) || campus.includes(st))
+      }) ?? availableVendors[0]
+
+    if (matchedVendor) {
+      return {
+        route: 'vendor-connected',
+        assignedVendorCode:
+          typeof matchedVendor.code === 'string'
+            ? matchedVendor.code
+            : matchedVendor.id,
+        assignedVendorName:
+          typeof matchedVendor.name === 'string'
+            ? matchedVendor.name
+            : 'Assigned Vendor',
+        assignedVendorStation:
+          typeof matchedVendor.station === 'string'
+            ? matchedVendor.station
+            : undefined,
+        estimatedDeliveryFeeKsh: 0,
+        estimatedTimeline:
+          'Connected with an available vendor for graduation pickup.',
+      }
+    }
+  }
+
+  if (allInStock) {
+    return {
+      route: 'same-day-delivery',
+      estimatedDeliveryFeeKsh: SAME_DAY_DELIVERY_FEE_KSH,
+      estimatedTimeline:
+        'In stock — scheduled for same-day delivery (delivery fee applies).',
+    }
+  }
+
+  return {
+    route: 'scheduled-2-4-days',
+    estimatedDeliveryFeeKsh: SAME_DAY_DELIVERY_FEE_KSH,
+    estimatedTimeline:
+      '2–4 days delivery while we source fresh stems and prepare your bouquet.',
+  }
+}
+
+/**
  * Post-payment confirmation trigger.
- * Strictly updates ONLY the order document associated with the payment
- * (`orders/{orderId}` and `users/{userId}/orders/{orderId}` when owned by a user)
- * and never writes to arbitrary paths supplied by the browser.
+ * - Verifies paid amount against the authoritative server-computed order total.
+ * - Assigns post-payment fulfillment routing (vendor / same-day / 2-4 days).
+ * - Credits ONLY registered sellers that already exist in `sellers/{code}`,
+ *   recording both ordersCount and KSh commission earned.
  */
 export const onPaymentConfirmed = onDocumentUpdated(
   'payments/{paymentId}',
@@ -80,10 +182,61 @@ export const onPaymentConfirmed = onDocumentUpdated(
     }
 
     const orderData = orderSnap.data() as Record<string, unknown>
+    const paidAmount = typeof after.amount === 'number' ? after.amount : 0
+
+    // Server-side amount verification
+    let authoritative
+    try {
+      authoritative = await computeAuthoritativeOrderTotal(db, orderData)
+    } catch (err) {
+      logger.error(
+        'onPaymentConfirmed: failed to compute authoritative total',
+        {
+          paymentId,
+          orderId: rawOrderId,
+          err,
+        },
+      )
+      return
+    }
+
+    if (paidAmount < authoritative.total) {
+      logger.error(
+        'onPaymentConfirmed: paid amount is less than authoritative order total — refusing confirmation',
+        {
+          paymentId,
+          orderId: rawOrderId,
+          paidAmount,
+          expectedTotal: authoritative.total,
+        },
+      )
+      await orderRef.set(
+        {
+          paymentMismatch: true,
+          paidAmountReceived: paidAmount,
+          expectedTotal: authoritative.total,
+        },
+        { merge: true },
+      )
+      return
+    }
+
+    const fulfillment = await resolveFulfillmentRoute(
+      orderData,
+      authoritative.allInStock,
+      authoritative.totalItemCount,
+    )
+
     const confirmationFields = {
       status: 'confirmed',
       paymentId,
       paidAt: FieldValue.serverTimestamp(),
+      fulfillment,
+      summary: {
+        subtotal: authoritative.subtotal,
+        deliveryFee: authoritative.deliveryFee,
+        total: authoritative.total,
+      },
     }
 
     await orderRef.set(confirmationFields, { merge: true })
@@ -103,35 +256,52 @@ export const onPaymentConfirmed = onDocumentUpdated(
         .set(confirmationFields, { merge: true })
     }
 
+    // Credit ONLY existing registered seller/agent codes (never create phantom sellers on typos)
     const referrer =
       typeof orderData.referrer === 'string' &&
       SAFE_ID_REGEX.test(orderData.referrer)
         ? orderData.referrer.toLowerCase()
         : null
 
+    let creditedReferrer: string | null = null
     if (referrer) {
-      const amount = typeof after.amount === 'number' ? after.amount : 0
-      const pointsEarned = 10 + Math.floor(amount / 100)
-      await db
-        .collection('sellers')
-        .doc(referrer)
-        .set(
+      const sellerRef = db.collection('sellers').doc(referrer)
+      const sellerSnap = await sellerRef.get()
+      if (!sellerSnap.exists) {
+        logger.warn(
+          'onPaymentConfirmed: ignoring unknown referral code (not registered)',
           {
-            code: referrer,
-            ordersCount: FieldValue.increment(1),
-            totalSalesKsh: FieldValue.increment(amount),
-            points: FieldValue.increment(pointsEarned),
-            updatedAt: new Date().toISOString(),
+            paymentId,
+            orderId: rawOrderId,
+            referrer,
           },
-          { merge: true },
         )
+      } else {
+        const sellerData = sellerSnap.data() as Record<string, unknown>
+        const commissionKsh =
+          typeof sellerData.commissionPerOrderKsh === 'number' &&
+          sellerData.commissionPerOrderKsh >= 0
+            ? sellerData.commissionPerOrderKsh
+            : REFERRAL_COMMISSION_PER_ORDER_KSH
+        const pointsEarned = 10 + Math.floor(paidAmount / 100)
+
+        await sellerRef.update({
+          ordersCount: FieldValue.increment(1),
+          totalSalesKsh: FieldValue.increment(paidAmount),
+          earnedKsh: FieldValue.increment(commissionKsh),
+          points: FieldValue.increment(pointsEarned),
+          updatedAt: new Date().toISOString(),
+        })
+        creditedReferrer = referrer
+      }
     }
 
-    logger.info('onPaymentConfirmed: updated order documents only', {
+    logger.info('onPaymentConfirmed: verified payment and updated order', {
       paymentId,
       orderId: rawOrderId,
       orderUserId,
-      referrer,
+      creditedReferrer,
+      fulfillmentRoute: fulfillment.route,
     })
   },
 )

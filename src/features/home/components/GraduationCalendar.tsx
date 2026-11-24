@@ -23,8 +23,8 @@ export function GraduationCalendar({ graduations }: GraduationCalendarProps) {
             Find your ceremony.
           </h2>
           <p className="mt-4 text-base leading-relaxed text-neutral-600 sm:text-lg dark:text-neutral-400">
-            We set up outside the gate on graduation morning. Pre-order now and
-            collect with your order code on the day.
+            Pre-order for your graduation ceremony or request delivery to your
+            address. Exact pickup points are shared with you after booking.
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export function GraduationCalendar({ graduations }: GraduationCalendarProps) {
                     )}
                   </h3>
                   <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                    {graduation.weekday} · {graduation.stationName}
+                    {graduation.weekday} · Pickup details confirmed on WhatsApp
                   </p>
                   <p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-500">
                     {graduation.schoolColors}

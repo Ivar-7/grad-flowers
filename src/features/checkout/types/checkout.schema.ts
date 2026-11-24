@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+export const FulfillmentTypeSchema = z.enum([
+  'event-pickup',
+  'address-delivery',
+])
+
 export const CeremonyTimeSlotSchema = z.enum([
   'morning-ceremony',
   'midday-ceremony',
@@ -22,11 +27,17 @@ export function normalizeKenyanPhone(raw: string): string {
 }
 
 export const DeliveryDetailsSchema = z.object({
+  fulfillmentType: FulfillmentTypeSchema.default('event-pickup'),
   recipientName: z
     .string()
     .trim()
-    .min(2, 'Graduate or buyer name must be at least 2 characters')
+    .min(2, 'Buyer name must be at least 2 characters')
     .max(80, 'Name is too long'),
+  graduandName: z
+    .string()
+    .trim()
+    .max(80, 'Graduand name is too long')
+    .optional(),
   recipientEmail: z
     .string()
     .trim()
@@ -42,16 +53,16 @@ export const DeliveryDetailsSchema = z.object({
   campusOrVenue: z
     .string()
     .trim()
-    .min(2, 'Please specify the university or campus')
-    .max(100, 'Campus name is too long'),
+    .min(2, 'Please specify the graduation campus or delivery area')
+    .max(100, 'Location name is too long'),
   venueAddress: z
     .string()
     .trim()
-    .min(3, 'Please select or enter the pickup station or gate')
-    .max(150, 'Station name is too long'),
+    .min(3, 'Please enter your pickup point or delivery address')
+    .max(150, 'Address is too long'),
   deliveryDate: z
     .string()
-    .min(1, 'Please select your graduation or collection date'),
+    .min(1, 'Please select your graduation or delivery date'),
   ceremonyTimeSlot: CeremonyTimeSlotSchema,
   specialInstructions: z
     .string()

@@ -48,7 +48,7 @@ export function GraduationTicket({
       <div className="grid gap-6 px-7 py-7 sm:px-10 lg:grid-cols-12 lg:items-center lg:gap-8">
         <div className="lg:col-span-5">
           <p className="text-xs font-semibold tracking-widest text-amber-300 uppercase">
-            {hasStarted ? 'At the gate today' : 'Next graduation we serve'}
+            {hasStarted ? 'Graduation day today' : 'Next graduation we serve'}
           </p>
           <p className="mt-2 font-display text-2xl leading-tight font-semibold sm:text-3xl">
             {graduation.campus}
@@ -56,8 +56,8 @@ export function GraduationTicket({
           <p className="mt-2 flex items-start gap-1.5 text-sm text-neutral-300">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
-              {graduation.weekday} {graduation.day} {graduation.month} ·{' '}
-              {graduation.stationName}
+              {graduation.weekday} {graduation.day} {graduation.month} · Event
+              pickup or delivery
             </span>
           </p>
         </div>
@@ -65,7 +65,7 @@ export function GraduationTicket({
         <div className="border-t border-dashed border-white/25 pt-6 lg:col-span-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
           {hasStarted ? (
             <p className="font-display text-2xl leading-snug font-medium">
-              We&rsquo;re set up outside the gate right now.
+              Serving graduates today — order for pickup or delivery.
             </p>
           ) : (
             <div

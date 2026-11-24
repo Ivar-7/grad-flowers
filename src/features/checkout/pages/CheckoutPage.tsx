@@ -9,6 +9,7 @@ import { ReviewStep } from '../components/ReviewStep'
 import { Card } from '@/shared/ui/Card'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { SITE_CONFIG } from '@/shared/config/site.config'
 import { formatKsh } from '@/shared/utils/currency'
 
 type CheckoutStep = 'delivery' | 'payment' | 'review'
@@ -25,7 +26,9 @@ export function CheckoutPage() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('delivery')
 
   const [deliveryDetails, setDeliveryDetails] = useState<DeliveryDetails>({
+    fulfillmentType: 'event-pickup',
     recipientName: '',
+    graduandName: '',
     recipientEmail: '',
     recipientPhone: '',
     campusOrVenue: '',
@@ -34,6 +37,12 @@ export function CheckoutPage() {
     ceremonyTimeSlot: 'morning-ceremony',
     specialInstructions: '',
   })
+
+  const deliveryFee =
+    deliveryDetails.fulfillmentType === 'address-delivery'
+      ? SITE_CONFIG.sameDayDeliveryFeeKsh
+      : 0
+  const grandTotal = summary.subtotal + deliveryFee
 
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({
     phoneNumber: '',
@@ -157,7 +166,10 @@ export function CheckoutPage() {
 
       {/* Mini Cart Total Bar */}
       <div className="mt-6 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 px-2">
-        <span>Order Total: {formatKsh(summary.total)}</span>
+        <span>
+          Order Total: {formatKsh(grandTotal)}
+          {deliveryFee > 0 ? ` (incl. ${formatKsh(deliveryFee)} delivery)` : ''}
+        </span>
         <Link to="/cart" className="hover:underline">
           Edit items in cart
         </Link>

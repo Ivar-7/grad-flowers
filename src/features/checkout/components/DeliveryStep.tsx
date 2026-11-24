@@ -9,14 +9,22 @@ import {
   Clock,
   ArrowRight,
   AlertCircle,
+  Truck,
+  Tag,
+  CheckCircle2,
 } from 'lucide-react'
 import {
   KENYAN_PICKUP_STATIONS,
   type CeremonyTimeSlot,
   type DeliveryDetails,
+  type FulfillmentType,
 } from '../types/checkout.types'
 import { DeliveryDetailsSchema } from '../types/checkout.schema'
+import { useReferral } from '@/shared/referral/useReferral'
+import { validateReferralCode } from '@/shared/referral/referral.api'
+import { SITE_CONFIG } from '@/shared/config/site.config'
 import { normalizeError } from '@/shared/errors/error-normalizer'
+import { formatKsh } from '@/shared/utils/currency'
 import { Button } from '@/shared/ui/Button'
 
 export interface DeliveryStepProps {
@@ -32,27 +40,27 @@ const TIME_SLOTS: {
 }[] = [
   {
     id: 'morning-ceremony',
-    title: 'Morning Processional',
+    title: 'Morning Window',
     hours: '7:00 AM – 9:30 AM',
-    description: 'Ready at the station before morning assembly',
+    description: 'Ready before morning assembly / early delivery',
   },
   {
     id: 'midday-ceremony',
-    title: 'Midday Graduation',
+    title: 'Midday Window',
     hours: '10:00 AM – 1:00 PM',
-    description: 'Peak graduation square & main gate handoff',
+    description: 'Peak graduation handoff or midday dispatch',
   },
   {
     id: 'afternoon-ceremony',
-    title: 'Afternoon Photo Session',
+    title: 'Afternoon Window',
     hours: '1:30 PM – 4:30 PM',
-    description: 'Collected right after hooding & certificate call',
+    description: 'Afternoon photo call or afternoon delivery',
   },
   {
     id: 'evening-banquet',
-    title: 'Evening Family Dinner',
+    title: 'Evening Window',
     hours: '5:00 PM – 7:30 PM',
-    description: 'Evening pickup for graduation dinners & parties',
+    description: 'Evening pickup or delivery for family celebrations',
   },
 ]
 
@@ -63,8 +71,16 @@ function getDefaultDeliveryDate(): string {
 }
 
 export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
+  const { referrer, setReferrer, clearReferrer } = useReferral()
+
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>(
+    initialValues.fulfillmentType || 'event-pickup',
+  )
   const [recipientName, setRecipientName] = useState(
     initialValues.recipientName,
+  )
+  const [graduandName, setGraduandName] = useState(
+    initialValues.graduandName || '',
   )
   const [recipientEmail, setRecipientEmail] = useState(
     initialValues.recipientEmail,
@@ -87,7 +103,27 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
   const [specialInstructions, setSpecialInstructions] = useState(
     initialValues.specialInstructions || '',
   )
+
+  // Referral / Agent code box
+  const [refInput, setRefInput] = useState(referrer ?? '')
+  const [refStatus, setRefStatus] = useState<
+    'idle' | 'checking' | 'valid' | 'invalid'
+  >(referrer ? 'valid' : 'idle')
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleFulfillmentChange = (mode: FulfillmentType) => {
+    setFulfillmentType(mode)
+    if (mode === 'event-pickup') {
+      const first = KENYAN_PICKUP_STATIONS[0]!
+      setCampusOrVenue(first.campus)
+      setVenueAddress(first.stationName)
+      setDeliveryDate(first.nextGraduationDate)
+    } else {
+      setCampusOrVenue('')
+      setVenueAddress('')
+    }
+  }
 
   const handleSelectStationPreset = (
     campus: string,
@@ -99,13 +135,34 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
     if (nextDate) setDeliveryDate(nextDate)
   }
 
+  const handleApplyReferralCode = async () => {
+    const trimmed = refInput.trim()
+    if (!trimmed) {
+      clearReferrer()
+      setRefStatus('idle')
+      return
+    }
+    setRefStatus('checking')
+    const result = await validateReferralCode(trimmed)
+    if (result.valid && result.code) {
+      setReferrer(result.code)
+      setRefInput(result.code)
+      setRefStatus('valid')
+    } else {
+      clearReferrer()
+      setRefStatus('invalid')
+    }
+  }
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setErrorMessage(null)
 
     try {
       const validated = DeliveryDetailsSchema.parse({
+        fulfillmentType,
         recipientName,
+        graduandName: graduandName.trim() || undefined,
         recipientEmail,
         recipientPhone,
         campusOrVenue,
@@ -121,15 +178,16 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
     }
   }
 
+  const isDelivery = fulfillmentType === 'address-delivery'
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
-          1. Campus Station & Collection Details
+          1. Pickup or Delivery Details
         </h3>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          Pick one of our Kenyan university stations or enter your graduation
-          venue
+          Choose graduation event pickup or doorstep delivery to your address
         </p>
       </div>
 
@@ -143,45 +201,104 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
         </div>
       )}
 
-      {/* Quick Kenyan Station Selector Pills */}
-      <div>
-        <span className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
-          Quick-Select Our Graduation Stations:
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {KENYAN_PICKUP_STATIONS.map((st) => {
-            const isSelected = campusOrVenue === st.campus
-            return (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() =>
-                  handleSelectStationPreset(
-                    st.campus,
-                    st.stationName,
-                    st.nextGraduationDate,
-                  )
-                }
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'border-rose-600 bg-rose-50 text-rose-700 dark:border-rose-500 dark:bg-rose-950/60 dark:text-rose-300 font-bold'
-                    : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 hover:border-neutral-300'
-                }`}
-              >
-                {st.campus}
-              </button>
-            )
-          })}
-        </div>
+      {/* Fulfillment Type Selector */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => handleFulfillmentChange('event-pickup')}
+          className={`flex items-start gap-3 p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            !isDelivery
+              ? 'border-rose-600 bg-rose-50/70 dark:border-rose-500 dark:bg-rose-950/50 ring-2 ring-rose-500/20'
+              : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-300'
+          }`}
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
+            <GraduationCap className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-neutral-900 dark:text-white">
+                Pick up at Graduation
+              </span>
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                Free
+              </span>
+            </div>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Connects you with an available vendor on graduation day.
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleFulfillmentChange('address-delivery')}
+          className={`flex items-start gap-3 p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+            isDelivery
+              ? 'border-rose-600 bg-rose-50/70 dark:border-rose-500 dark:bg-rose-950/50 ring-2 ring-rose-500/20'
+              : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-300'
+          }`}
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            <Truck className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-neutral-900 dark:text-white">
+                Deliver to an Address
+              </span>
+              <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                +{formatKsh(SITE_CONFIG.sameDayDeliveryFeeKsh)}
+              </span>
+            </div>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              Same-day if in stock, or 2–4 days when freshly sourced.
+            </p>
+          </div>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Quick Graduation Selector Pills (only for event pickup) */}
+      {!isDelivery && (
+        <div>
+          <span className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
+            Select Graduation Ceremony:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {KENYAN_PICKUP_STATIONS.map((st) => {
+              const isSelected = campusOrVenue === st.campus
+              return (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() =>
+                    handleSelectStationPreset(
+                      st.campus,
+                      st.stationName,
+                      st.nextGraduationDate,
+                    )
+                  }
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'border-rose-600 bg-rose-50 text-rose-700 dark:border-rose-500 dark:bg-rose-950/60 dark:text-rose-300 font-bold'
+                      : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 hover:border-neutral-300'
+                  }`}
+                >
+                  {st.campus}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label
             htmlFor="recipient-name"
             className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5"
           >
-            Graduate or Buyer Name *
+            Your Name (Buyer) *
           </label>
           <div className="relative">
             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
@@ -191,12 +308,34 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
               required
               value={recipientName}
               onChange={(e) => setRecipientName(e.target.value)}
-              placeholder="e.g. Wanjiku Kamau"
+              placeholder="e.g. Mary Wanjiru"
               className="w-full pl-10 pr-3.5 py-2 text-sm rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
         </div>
 
+        <div>
+          <label
+            htmlFor="graduand-name"
+            className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5"
+          >
+            Graduand&apos;s Name
+          </label>
+          <div className="relative">
+            <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <input
+              id="graduand-name"
+              type="text"
+              value={graduandName}
+              onChange={(e) => setGraduandName(e.target.value)}
+              placeholder="e.g. Faith Njeri"
+              className="w-full pl-10 pr-3.5 py-2 text-sm rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label
             htmlFor="recipient-email"
@@ -212,7 +351,7 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
               required
               value={recipientEmail}
               onChange={(e) => setRecipientEmail(e.target.value)}
-              placeholder="wanjiku@example.com"
+              placeholder="you@example.com"
               className="w-full pl-10 pr-3.5 py-2 text-sm rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
@@ -223,7 +362,7 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
             htmlFor="recipient-phone"
             className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5"
           >
-            Phone Number (07... / 01...) *
+            Phone / WhatsApp Number (07... / 01...) *
           </label>
           <div className="relative">
             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
@@ -246,17 +385,25 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
             htmlFor="campus-venue"
             className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5"
           >
-            University / Institution *
+            {isDelivery ? 'Area / Estate / Town *' : 'University / Ceremony *'}
           </label>
           <div className="relative">
-            <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            {isDelivery ? (
+              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            ) : (
+              <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            )}
             <input
               id="campus-venue"
               type="text"
               required
               value={campusOrVenue}
               onChange={(e) => setCampusOrVenue(e.target.value)}
-              placeholder="e.g. University of Nairobi (UoN)"
+              placeholder={
+                isDelivery
+                  ? 'e.g. Kilimani, Westlands, Juja, Rongai'
+                  : 'e.g. TUK, KISE, KCA University'
+              }
               className="w-full pl-10 pr-3.5 py-2 text-sm rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
@@ -267,7 +414,9 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
             htmlFor="venue-address"
             className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5"
           >
-            Station / Gate / Pickup Point *
+            {isDelivery
+              ? 'Street / Building / Apartment *'
+              : 'Preferred Pickup Point *'}
           </label>
           <div className="relative">
             <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
@@ -277,11 +426,62 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
               required
               value={venueAddress}
               onChange={(e) => setVenueAddress(e.target.value)}
-              placeholder="e.g. Main Gate / Great Court Station"
+              placeholder={
+                isDelivery
+                  ? 'e.g. Argwings Kodhek Rd, Apt 4B'
+                  : 'Exact pickup point confirmed via WhatsApp'
+              }
               className="w-full pl-10 pr-3.5 py-2 text-sm rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
         </div>
+      </div>
+
+      {/* Agent / Referral Code Box */}
+      <div className="p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/50 space-y-2">
+        <label
+          htmlFor="checkout-ref-code"
+          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+        >
+          Agent or Referral Code (Optional — e.g. PETTI)
+        </label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <input
+              id="checkout-ref-code"
+              type="text"
+              value={refInput}
+              onChange={(e) => {
+                setRefInput(e.target.value)
+                setRefStatus('idle')
+              }}
+              placeholder="Enter seller code (e.g. PETTI)"
+              className="w-full pl-10 pr-3.5 py-2 text-sm uppercase font-mono rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:normal-case placeholder:font-sans placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            isLoading={refStatus === 'checking'}
+            onClick={handleApplyReferralCode}
+          >
+            Apply Code
+          </Button>
+        </div>
+        {refStatus === 'valid' && referrer && (
+          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>Code @{referrer.toUpperCase()} verified and applied.</span>
+          </p>
+        )}
+        {refStatus === 'invalid' && (
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            Code not found — double-check the spelling with your agent, or leave
+            blank to continue.
+          </p>
+        )}
       </div>
 
       <div className="space-y-4 pt-2">
@@ -290,7 +490,9 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
             htmlFor="delivery-date"
             className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5"
           >
-            Graduation / Collection Date *
+            {isDelivery
+              ? 'Preferred Delivery Date *'
+              : 'Graduation / Collection Date *'}
           </label>
           <div className="relative max-w-xs">
             <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
@@ -307,7 +509,7 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
 
         <div>
           <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
-            Select Collection Window *
+            {isDelivery ? 'Select Delivery Window *' : 'Select Pickup Window *'}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {TIME_SLOTS.map((slot) => {
@@ -347,14 +549,14 @@ export function DeliveryStep({ initialValues, onSubmit }: DeliveryStepProps) {
           htmlFor="special-instructions"
           className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5"
         >
-          Station Collection Notes (Optional)
+          Delivery or Pickup Notes (Optional)
         </label>
         <textarea
           id="special-instructions"
           rows={2}
           value={specialInstructions}
           onChange={(e) => setSpecialInstructions(e.target.value)}
-          placeholder="e.g. Collecting near Gate A tent; call 0712... when ready."
+          placeholder="e.g. Call 0712... on arrival, or preferred landmark."
           className="w-full px-3.5 py-2 text-sm rounded-xl border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
         />
       </div>

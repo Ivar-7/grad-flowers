@@ -26,6 +26,7 @@ export interface CartItem {
 
 export interface CartSummary {
   subtotal: number
+  deliveryFee?: number
   total: number
 }
 

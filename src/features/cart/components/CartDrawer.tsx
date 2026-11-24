@@ -87,7 +87,7 @@ export function CartDrawer() {
                   <div className="py-16 text-center">
                     <EmptyState
                       title="Your basket is empty"
-                      description="Pick from our 6 graduation products — Single (KSh 50) up to Premium (KSh 1,500)."
+                      description="Pick a fresh graduation bouquet for event pickup or doorstep delivery."
                       action={
                         <Button
                           variant="primary"

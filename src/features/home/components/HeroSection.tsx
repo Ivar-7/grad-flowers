@@ -1,39 +1,37 @@
 import { motion } from 'motion/react'
 import { ArrowRight, Check } from 'lucide-react'
 import { useCart } from '@/features/cart/state/useCart'
-import { KENYAN_PICKUP_STATIONS } from '@/features/checkout/types/checkout.types'
-import { SEEDED_FLOWERS } from '@/features/flowers/api/flowers.api'
-import type { Flower } from '@/features/flowers/types/flower.types'
 import { Button } from '@/shared/ui/Button'
-import { formatKsh } from '@/shared/utils/currency'
 import type { UpcomingGraduation } from '../state/useUpcomingGraduations'
 import { GraduationTicket } from './GraduationTicket'
-import { PriceList } from './PriceList'
 
-const HERO_PHOTO =
-  'https://images.unsplash.com/photo-1523693916903-027d144a2b7d?auto=format&fit=crop&q=75'
-
-const MENU_PRICES = SEEDED_FLOWERS.map((flower) => flower.price)
-const LOWEST_PRICE = formatKsh(Math.min(...MENU_PRICES))
-const HIGHEST_PRICE = formatKsh(Math.max(...MENU_PRICES))
+const HERO_PHOTO = '/images/bouquets/grand-pink-roses.jpg'
+const SAMPLE_THUMBNAILS = [
+  {
+    src: '/images/bouquets/black-red-roses.jpg',
+    alt: 'Red roses with baby’s breath in black and gold wrap',
+  },
+  {
+    src: '/images/bouquets/blush-luxury.jpg',
+    alt: 'Blush pink and cream rose graduation bouquet',
+  },
+  {
+    src: '/images/bouquets/hatbox.jpg',
+    alt: 'Red and white roses arranged in a black hatbox',
+  },
+]
 
 const PROMISES = [
   'Pay with M-Pesa',
-  `${KENYAN_PICKUP_STATIONS.length} campus pick-up stations`,
+  'Graduation pickup or doorstep delivery',
   'No account needed',
 ]
 
 export interface HeroSectionProps {
-  flowers: Flower[]
-  isLoadingFlowers: boolean
   nextGraduation: UpcomingGraduation | null
 }
 
-export function HeroSection({
-  flowers,
-  isLoadingFlowers,
-  nextGraduation,
-}: HeroSectionProps) {
+export function HeroSection({ nextGraduation }: HeroSectionProps) {
   const { openQuickOrder } = useCart()
 
   return (
@@ -59,9 +57,9 @@ export function HeroSection({
             </h1>
 
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-neutral-700 dark:text-neutral-300">
-              Fresh rose bouquets from {LOWEST_PRICE} to {HIGHEST_PRICE}. Pay
-              with M-Pesa now, then collect at our station outside the
-              graduation gate on the morning.
+              Hand-tied Kenyan rose bouquets for graduation day. Pay with M-Pesa
+              and choose graduation event pickup or delivery straight to your
+              address.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -79,7 +77,7 @@ export function HeroSection({
                 href="#menu"
                 className="inline-flex items-center justify-center rounded-xl border border-neutral-300 px-7 py-3.5 text-base font-semibold text-neutral-800 transition-colors hover:border-neutral-900 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-neutral-700 dark:text-neutral-100 dark:hover:border-neutral-300 dark:focus-visible:ring-offset-neutral-950"
               >
-                See the menu
+                See our bouquets
               </a>
             </div>
 
@@ -100,21 +98,26 @@ export function HeroSection({
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
-            className="relative mx-auto w-full max-w-md lg:col-span-5 lg:max-w-none"
+            className="relative mx-auto w-full max-w-md space-y-3 lg:col-span-5 lg:max-w-none"
           >
             <img
-              src={`${HERO_PHOTO}&w=900`}
-              srcSet={`${HERO_PHOTO}&w=600 600w, ${HERO_PHOTO}&w=900 900w, ${HERO_PHOTO}&w=1400 1400w`}
-              sizes="(min-width: 1024px) 40vw, 100vw"
-              alt="A bouquet of pink roses in white wrap, ready to hand over"
+              src={HERO_PHOTO}
+              alt="Fresh pink and cream graduation rose bouquet in blush wrap"
               fetchPriority="high"
-              className="aspect-square w-full rounded-3xl bg-orange-100 object-cover sm:aspect-4/5 dark:bg-neutral-900"
+              className="aspect-square w-full rounded-3xl bg-orange-100 object-cover shadow-xl sm:aspect-4/5 dark:bg-neutral-900"
             />
-            <PriceList
-              flowers={flowers}
-              isLoading={isLoadingFlowers}
-              className="relative mx-4 -mt-20 -rotate-1 sm:mx-8 lg:absolute lg:bottom-8 lg:-left-8 lg:mx-0 xl:-left-12 lg:mt-0 lg:w-72"
-            />
+            <div className="grid grid-cols-3 gap-3">
+              {SAMPLE_THUMBNAILS.map((thumb) => (
+                <img
+                  key={thumb.src}
+                  src={thumb.src}
+                  alt={thumb.alt}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-square w-full rounded-2xl bg-orange-100 object-cover shadow-sm ring-1 ring-neutral-900/5 dark:bg-neutral-900 dark:ring-white/10"
+                />
+              ))}
+            </div>
           </motion.div>
         </div>
 

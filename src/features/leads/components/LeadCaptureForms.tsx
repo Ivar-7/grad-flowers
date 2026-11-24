@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import {
   CalendarHeart,
-  Store,
   Camera,
   CheckCircle2,
   Phone,
@@ -45,21 +44,6 @@ const LEAD_TABS: {
     detailsLabel: 'Stem Preferences & Budget *',
     detailsPlaceholder:
       'e.g. 20 mixed roses + gypsophila every Friday for reception desk (KSh 1,000/week)',
-  },
-  {
-    id: 'stockist',
-    label: 'Become a Stockist',
-    icon: Store,
-    headline: 'Partner as a Campus Vendor or Flower Stockist',
-    subtitle:
-      'Get wholesale bouquets, wraps, ribbons, and QR cards supplied to your shop or graduation stand.',
-    locationLabel: 'Shop Location or Target Campus *',
-    locationPlaceholder: 'e.g. Juja Stage, KU Kahawa Sukari, CBD',
-    scheduleLabel: 'Expected Weekly / Graduation Volume',
-    schedulePlaceholder: 'e.g. 50 Mini + 30 Classic bouquets per ceremony',
-    detailsLabel: 'Business / Stand Details *',
-    detailsPlaceholder:
-      'e.g. Gift shop near campus gate looking for pre-wrapped bouquets and ribbons',
   },
   {
     id: 'photo-booking',
@@ -130,7 +114,7 @@ export function LeadCaptureForms() {
   return (
     <Card className="p-6 sm:p-8 border-neutral-200 dark:border-neutral-800 shadow-sm">
       {/* Tabs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-6">
         {LEAD_TABS.map((tab) => {
           const Icon = tab.icon
           const isSelected = activeTab === tab.id

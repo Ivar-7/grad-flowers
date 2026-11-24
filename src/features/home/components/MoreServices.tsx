@@ -7,12 +7,8 @@ const SERVICES = [
     body: 'Fresh stems for your home, office, hotel or church, every week.',
   },
   {
-    title: 'Stock our bouquets',
-    body: 'Wholesale bouquets, wraps and ribbons for your shop or graduation stand.',
-  },
-  {
     title: 'Graduation photos',
-    body: 'A portrait photographer to meet you at the graduation square.',
+    body: 'A portrait photographer to meet you at the graduation ceremony.',
   },
 ]
 
@@ -24,7 +20,7 @@ export function MoreServices() {
           More than graduation day.
         </h2>
 
-        <ul className="mt-8 grid border-t border-neutral-200 md:grid-cols-3 md:gap-10 dark:border-neutral-800">
+        <ul className="mt-8 grid border-t border-neutral-200 md:grid-cols-2 md:gap-10 dark:border-neutral-800">
           {SERVICES.map((service) => (
             <li
               key={service.title}

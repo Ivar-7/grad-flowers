@@ -8,13 +8,19 @@ const FAQS = [
     id: 'ordering',
     question: 'Do I need an account to order?',
     answer:
-      'No. Tap “Order in 60 seconds”, pick a bouquet and your university station, then enter your 07… or 01… M-Pesa number. You approve the payment prompt on your phone and get your order code straight away.',
+      'No. Tap “Order in 60 seconds”, pick your bouquet, choose graduation pickup or address delivery, and enter your 07… or 01… M-Pesa number. You approve the payment prompt on your phone and get your order code straight away.',
+  },
+  {
+    id: 'delivery-or-pickup',
+    question: 'Can I get my bouquet delivered instead of picking it up?',
+    answer:
+      'Yes! At checkout you can choose either pickup at the graduation event or delivery to your address. If your bouquet is in stock, we offer same-day delivery for a small delivery fee. If we need to source fresh stems for your order, delivery takes 2–4 days.',
   },
   {
     id: 'collection',
-    question: 'Where do I collect on graduation day?',
+    question: 'How does graduation pickup work?',
     answer:
-      'At our station outside the main graduation gate. We set up at UoN, KU, JKUAT, Strathmore, USIU-Africa, MKU, Daystar and TUK / KCA. Show your order code and the bouquet is yours.',
+      'After payment, we connect you with an available vendor for your graduation ceremony and confirm the exact pickup spot with you on WhatsApp/SMS. Show your order code and collect your fresh bouquet.',
   },
   {
     id: 'qr-card',

@@ -31,8 +31,7 @@ export const SEEDED_FLOWERS: Flower[] = [
       'One fresh Kenyan long-stem rose tied with a satin ribbon in your school colours. Simple, sweet, and ready to hand over at the graduation square.',
     price: 50,
     category: 'single',
-    imageUrl:
-      'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/images/bouquets/pink-spray-roses.jpg',
     isFeatured: false,
     inStock: true,
     ribbonColors: [
@@ -56,8 +55,7 @@ export const SEEDED_FLOWERS: Flower[] = [
       'Three vibrant Kenyan roses paired with fresh white chrysanthemum or delicate gypsophila filler in a crisp celebratory wrap and school ribbon.',
     price: 350,
     category: 'mini',
-    imageUrl:
-      'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/images/bouquets/pink-red-roses.jpg',
     isFeatured: true,
     inStock: true,
     ribbonColors: [
@@ -84,8 +82,7 @@ export const SEEDED_FLOWERS: Flower[] = [
       'Everything in the Mini bouquet (3 roses, 1 chrysanthemum or gypsophila, wrap) tucked with a treat chocolate bar and a printed graduation success card.',
     price: 500,
     category: 'candy',
-    imageUrl:
-      'https://images.unsplash.com/photo-1572454591674-2739f30d8c40?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/images/bouquets/black-red-roses.jpg',
     isFeatured: true,
     inStock: true,
     ribbonColors: ['Gold', 'Crimson Red', 'Royal Blue', 'Purple', 'White'],
@@ -104,8 +101,7 @@ export const SEEDED_FLOWERS: Flower[] = [
       'Six rich Kenyan roses arranged with three lush chrysanthemums or gypsophila sprays in signature wrap, complete with a scannable QR voice/video message card.',
     price: 600,
     category: 'classic',
-    imageUrl:
-      'https://images.unsplash.com/photo-1523693916903-027d144a2b7d?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/images/bouquets/blush-luxury.jpg',
     isFeatured: true,
     inStock: true,
     ribbonColors: [
@@ -134,8 +130,7 @@ export const SEEDED_FLOWERS: Flower[] = [
       'Our Classic 6-rose & 3-chrysanthemum bouquet with QR message card, loaded with Eclairs, assorted toffees, a celebratory biscuit pack, and a keepsake gift card.',
     price: 750,
     category: 'candy',
-    imageUrl:
-      'https://images.unsplash.com/photo-1596438459194-f275f413d6ff?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/images/bouquets/hatbox.jpg',
     isFeatured: true,
     inStock: true,
     ribbonColors: [
@@ -161,8 +156,7 @@ export const SEEDED_FLOWERS: Flower[] = [
       'A full dozen long-stem Kenyan roses and five full chrysanthemums dressed in a statement double wrap with satin school ribbon and a scannable QR voice/video message card.',
     price: 1500,
     category: 'premium',
-    imageUrl:
-      'https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/images/bouquets/grand-pink-roses.jpg',
     isFeatured: true,
     inStock: true,
     ribbonColors: [
@@ -226,9 +220,18 @@ export async function fetchFlowers(
       }
 
       if (validDocs.length > 0) {
-        // Merge any missing official products from SEEDED_FLOWERS so all 6 are always present
+        // Merge any missing official products from SEEDED_FLOWERS and replace legacy Unsplash stock photos
         const byId = new Map(validDocs.map((f) => [f.id, f]))
-        const merged = SEEDED_FLOWERS.map((seed) => byId.get(seed.id) ?? seed)
+        const merged = SEEDED_FLOWERS.map((seed) => {
+          const remote = byId.get(seed.id)
+          if (!remote) return seed
+          return {
+            ...remote,
+            imageUrl: remote.imageUrl.includes('images.unsplash.com')
+              ? seed.imageUrl
+              : remote.imageUrl,
+          }
+        })
         return filterCatalogItems(merged, category, schoolColor)
       }
     }
@@ -262,7 +265,14 @@ export async function fetchFlowerById(id: string): Promise<Flower | null> {
           ...flowerDoc.data(),
         })
         if (parsed.success) {
-          return parsed.data
+          const seed = SEEDED_FLOWERS.find((f) => f.id === parsed.data.id)
+          return {
+            ...parsed.data,
+            imageUrl:
+              parsed.data.imageUrl.includes('images.unsplash.com') && seed
+                ? seed.imageUrl
+                : parsed.data.imageUrl,
+          }
         }
       }
     }

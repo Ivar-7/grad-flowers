@@ -10,6 +10,7 @@ import {
   getCallbackUrl,
   normalizePhone,
 } from './config.js'
+import { computeAuthoritativeOrderTotal } from '../app/pricing.js'
 
 const db = getFirestore()
 
@@ -17,19 +18,18 @@ const SAFE_ORDER_ID_REGEX = /^[A-Za-z0-9_-]{4,64}$/
 
 /**
  * Initiates an M-Pesa STK push via PayHero for a specific order.
- * Supports both 60-second guest checkout and authenticated users.
- * Never accepts arbitrary document paths from the client; only updates
- * the verified order's own documents in onPaymentConfirmed.
+ * Authoritatively computes the order total on the server from the catalog
+ * prices and fulfillment type — never trusting a client-supplied amount.
  *
  * Input:
- *   { amount, phoneNumber, description, orderId }
+ *   { amount?, phoneNumber, description, orderId }
  *
  * Returns:
  *   { paymentId }
  */
 export const startPayheroPayment = onCall(async (request) => {
   const uid = request.auth?.uid ?? null
-  const amount = request.data?.amount as number | undefined
+  const clientAmount = request.data?.amount as number | undefined
   const rawPhone = request.data?.phoneNumber as string | undefined
   const description = request.data?.description as string | undefined
   const rawOrderId =
@@ -37,12 +37,6 @@ export const startPayheroPayment = onCall(async (request) => {
     ((request.data?.metadata as Record<string, unknown> | undefined)
       ?.orderId as string | undefined)
 
-  if (!amount || amount <= 0) {
-    throw new HttpsError(
-      'invalid-argument',
-      'amount must be a positive number.',
-    )
-  }
   if (!rawPhone) {
     throw new HttpsError('invalid-argument', 'phoneNumber is required.')
   }
@@ -53,12 +47,51 @@ export const startPayheroPayment = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'A valid orderId is required.')
   }
 
-  const orderSnap = await db.collection('orders').doc(rawOrderId).get()
+  const orderRef = db.collection('orders').doc(rawOrderId)
+  const orderSnap = await orderRef.get()
   if (!orderSnap.exists) {
     throw new HttpsError('not-found', 'Order not found.')
   }
 
   const orderData = orderSnap.data() as Record<string, unknown>
+
+  if (orderData.status !== 'pending-payment') {
+    throw new HttpsError(
+      'failed-precondition',
+      'This order is already paid or cannot be paid again.',
+    )
+  }
+
+  let authoritative
+  try {
+    authoritative = await computeAuthoritativeOrderTotal(db, orderData)
+  } catch (err) {
+    logger.warn('startPayheroPayment: invalid order items', {
+      orderId: rawOrderId,
+      err,
+    })
+    throw new HttpsError(
+      'invalid-argument',
+      'Order items are invalid. Please start a fresh order.',
+    )
+  }
+
+  const expectedAmount = authoritative.total
+  if (
+    typeof clientAmount === 'number' &&
+    Math.ceil(clientAmount) !== expectedAmount
+  ) {
+    logger.warn('startPayheroPayment: client amount mismatch rejected', {
+      orderId: rawOrderId,
+      clientAmount,
+      expectedAmount,
+    })
+    throw new HttpsError(
+      'invalid-argument',
+      `Payment amount does not match the order total (KSh ${expectedAmount}).`,
+    )
+  }
+
   const orderOwnerId =
     typeof orderData.userId === 'string' && orderData.userId
       ? orderData.userId
@@ -91,6 +124,18 @@ export const startPayheroPayment = onCall(async (request) => {
     )
   }
 
+  // Ensure the stored order summary reflects the server-verified totals
+  await orderRef.set(
+    {
+      summary: {
+        subtotal: authoritative.subtotal,
+        deliveryFee: authoritative.deliveryFee,
+        total: expectedAmount,
+      },
+    },
+    { merge: true },
+  )
+
   const paymentId = uuidv4()
   const paymentRef = db.collection('payments').doc(paymentId)
 
@@ -101,7 +146,7 @@ export const startPayheroPayment = onCall(async (request) => {
     orderId: rawOrderId,
     customerName,
     customerEmail,
-    amount,
+    amount: expectedAmount,
     phone,
     description,
     status: 'pending',
@@ -115,7 +160,7 @@ export const startPayheroPayment = onCall(async (request) => {
     const response = await axios.post(
       `${PAYHERO_BASE_URL}/payments`,
       {
-        amount,
+        amount: expectedAmount,
         phone_number: phone,
         customer_name: customerName,
         channel_id: getChannelId(),

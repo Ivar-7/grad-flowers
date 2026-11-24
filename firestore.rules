@@ -1,7 +1,88 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper authorization functions
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: flowers
+    // Document ID: {flowerId}
+    // Access: Public read (catalog); admin-only write
+    //
+    // Collection: categories
+    // Document ID: {categoryId}
+    // Access: Public read; admin-only write
+    //
+    // Collection: graduations
+    // Document ID: {gradId}
+    // Access: Public read (calendar); staff/admin write
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (matches userId, immutable)
+    //   - email: string | null (<= 254 chars)
+    //   - displayName: string | null (<= 120 chars)
+    //   - photoURL: string | null (<= 2048 chars)
+    //   - role: 'customer' | 'staff' | 'admin' (immutable for non-admins)
+    //   - createdAt: string (ISO timestamp, <= 40 chars, immutable)
+    //   - updatedAt: string (ISO timestamp, <= 40 chars)
+    //
+    // Collection: users/{userId}/orders
+    // Document ID: {orderId}
+    // Access: Owner or staff/admin read; owner or staff/admin create; staff/admin update/delete
+    //
+    // Collection: payments
+    // Document ID: {paymentId}
+    // Access: Written only by Cloud Functions; paying user, guest lookup by ID, or staff/admin get; owner or staff/admin list
+    //
+    // Collection: orders
+    // Document ID: {orderId}
+    // Fields (validated on create/update):
+    //   - status: 'pending-payment' on create; valid OrderStatus enum on update
+    //   - userId: string | null (must be null or request.auth.uid on create)
+    //   - userEmail: string (4..254 chars)
+    //   - referrer: string | null (optional, <= 40 chars)
+    //   - items: list (1..50 items)
+    //   - summary: map { total: number >= 0, deliveryFee?: number >= 0, ... }
+    //   - delivery: map {
+    //       recipientName: string (2..120 chars),
+    //       recipientPhone: string (9..25 chars),
+    //       fulfillmentType?: 'event-pickup' | 'address-delivery',
+    //       graduandName?: string | null (<= 120 chars),
+    //       specialInstructions?: string | null (<= 500 chars),
+    //       ...
+    //     }
+    //   - createdAt: string (immutable on update)
+    //
+    // Collection: leads
+    // Document ID: {leadId}
+    // Access: Public create (status == 'new'); staff/admin read/update/delete
+    //
+    // Collection: sellers
+    // Document ID: {sellerId} (normalized referral code)
+    // Contains PII (phone) and private operational/sales/payout data (allocatedStock, manualSoldCount, ordersCount, totalSalesKsh, points, earnedKsh, paidOutKsh, lastPaidAt, commissionPerOrderKsh, available).
+    // Access: Staff/admin read & write ONLY (never publicly readable).
+    //
+    // Collection: referralCodes
+    // Document ID: {code} (normalized lowercase referral code)
+    // Public-safe code lookup collection (ZERO PII or sales data):
+    // Fields:
+    //   - code: string (2..32 chars, matches doc ID, required)
+    //   - active: bool (required)
+    //   - updatedAt: string (optional, <= 40 chars)
+    // Access: Public `get` by exact code for checkout validation; staff/admin `list` & `write`.
+    //
+    // Collection: qrMessages
+    // Document ID: {messageId}
+    // Access: Public `get` by card QR ID; public create with schema validation; staff/admin `list`, `update`, `delete`.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -24,6 +105,168 @@ service cloud.firestore {
       return isAuthenticated() && userRole() in ['admin', 'staff'];
     }
 
+    function uidUnchanged(userId) {
+      return !('uid' in request.resource.data) || request.resource.data.uid == userId;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data)
+        || !('uid' in resource.data)
+        || request.resource.data.uid == resource.data.uid;
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, field, minLen, maxLen) {
+      return !(field in data) || isValidString(data[field], minLen, maxLen);
+    }
+
+    function isValidNullableString(data, field, maxLen) {
+      return !(field in data)
+        || data[field] == null
+        || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt', 'updatedAt'])
+        && uidUnchanged(userId)
+        && isValidNullableString(data, 'email', 254)
+        && isValidNullableString(data, 'displayName', 120)
+        && isValidNullableString(data, 'photoURL', 2048)
+        && (!('role' in data) || data.role in ['customer', 'staff', 'admin'])
+        && isValidOptionalString(data, 'createdAt', 1, 40)
+        && isValidOptionalString(data, 'updatedAt', 1, 40);
+    }
+
+    function isValidOrderStatus(status) {
+      return status in [
+        'pending-payment',
+        'confirmed',
+        'florist-arranging',
+        'ribbon-embossed',
+        'out-for-delivery',
+        'delivered'
+      ];
+    }
+
+    function isValidOrderCreate(data) {
+      return data.status == 'pending-payment'
+        && isValidString(data.userEmail, 4, 254)
+        && (!('userId' in data) || data.userId == null || (isAuthenticated() && data.userId == request.auth.uid))
+        && isValidNullableString(data, 'referrer', 40)
+        && data.delivery is map
+        && isValidString(data.delivery.recipientName, 2, 120)
+        && isValidString(data.delivery.recipientPhone, 9, 25)
+        && (!('fulfillmentType' in data.delivery) || data.delivery.fulfillmentType in ['event-pickup', 'address-delivery'])
+        && isValidNullableString(data.delivery, 'graduandName', 120)
+        && isValidNullableString(data.delivery, 'specialInstructions', 500)
+        && data.items is list
+        && data.items.size() >= 1
+        && data.items.size() <= 50
+        && data.summary is map
+        && data.summary.total is number
+        && data.summary.total >= 0
+        && (!('deliveryFee' in data.summary) || (data.summary.deliveryFee is number && data.summary.deliveryFee >= 0));
+    }
+
+    function isValidOrderUpdate(data) {
+      return isValidOrderStatus(data.status)
+        && (!('createdAt' in resource.data) || data.createdAt == resource.data.createdAt);
+    }
+
+    function isValidLeadCreate(data) {
+      return data.status == 'new'
+        && isValidString(data.name, 2, 120)
+        && isValidString(data.phone, 9, 25)
+        && isValidString(data.details, 0, 2000)
+        && isValidOptionalString(data, 'locationOrCampus', 0, 150)
+        && isValidNullableString(data, 'referrer', 40);
+    }
+
+    function isValidLeadUpdate(data) {
+      return data.status is string
+        && data.status.size() >= 1
+        && data.status.size() <= 40
+        && (!('createdAt' in resource.data) || data.createdAt == resource.data.createdAt);
+    }
+
+    function isValidSeller(data, sellerId) {
+      return data.keys().hasOnly([
+          'code',
+          'name',
+          'phone',
+          'station',
+          'allocatedStock',
+          'manualSoldCount',
+          'updatedAt',
+          'ordersCount',
+          'totalSalesKsh',
+          'points',
+          'earnedKsh',
+          'paidOutKsh',
+          'lastPaidAt',
+          'commissionPerOrderKsh',
+          'available'
+        ])
+        && isValidString(data.code, 2, 32)
+        && data.code == sellerId
+        && isValidOptionalString(data, 'name', 1, 80)
+        && isValidOptionalString(data, 'phone', 0, 25)
+        && isValidOptionalString(data, 'station', 0, 150)
+        && (!('allocatedStock' in data) || (data.allocatedStock is int && data.allocatedStock >= 0))
+        && (!('manualSoldCount' in data) || (data.manualSoldCount is int && data.manualSoldCount >= 0))
+        && isValidOptionalString(data, 'updatedAt', 1, 40)
+        && (!('ordersCount' in data) || (data.ordersCount is number && data.ordersCount >= 0))
+        && (!('totalSalesKsh' in data) || (data.totalSalesKsh is number && data.totalSalesKsh >= 0))
+        && (!('points' in data) || (data.points is number && data.points >= 0))
+        && (!('earnedKsh' in data) || (data.earnedKsh is number && data.earnedKsh >= 0))
+        && (!('paidOutKsh' in data) || (data.paidOutKsh is number && data.paidOutKsh >= 0))
+        && isValidNullableString(data, 'lastPaidAt', 40)
+        && (!('commissionPerOrderKsh' in data) || (data.commissionPerOrderKsh is number && data.commissionPerOrderKsh >= 0))
+        && (!('available' in data) || data.available is bool);
+    }
+
+    function isValidReferralCode(data, code) {
+      return data.keys().hasOnly(['code', 'active', 'updatedAt'])
+        && data.keys().hasAll(['code', 'active'])
+        && isValidString(data.code, 2, 32)
+        && data.code == code
+        && data.active is bool
+        && isValidOptionalString(data, 'updatedAt', 1, 40);
+    }
+
+    function isValidQrMessage(data) {
+      return data.keys().hasOnly([
+          'id',
+          'orderId',
+          'recipientName',
+          'senderName',
+          'writtenNote',
+          'mediaType',
+          'mediaUrl',
+          'bouquetName',
+          'createdAt'
+        ])
+        && isValidString(data.recipientName, 1, 120)
+        && isValidString(data.senderName, 1, 120)
+        && isValidString(data.writtenNote, 0, 2000)
+        && data.mediaType in ['audio', 'video', 'note']
+        && isValidNullableString(data, 'mediaUrl', 980000)
+        && isValidOptionalString(data, 'orderId', 1, 64)
+        && isValidOptionalString(data, 'bouquetName', 1, 150)
+        && isValidOptionalString(data, 'createdAt', 1, 40);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
     // Public flowers catalog: anyone can read, admin-only writes
     match /flowers/{flowerId} {
       allow read: if true;
@@ -45,54 +288,84 @@ service cloud.firestore {
     // User profiles: owner or staff can read; users cannot self-escalate role
     match /users/{userId} {
       allow read: if isOwner(userId) || isStaffOrAdmin();
-      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == 'customer');
-      allow update: if (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)) || isAdmin();
+      allow create: if isOwner(userId)
+        && isValidUserProfile(request.resource.data, userId)
+        && (!('role' in request.resource.data) || request.resource.data.role == 'customer');
+      allow update: if isValidUserProfile(request.resource.data, userId)
+        && uidNotModified()
+        && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && (
+          (isOwner(userId)
+            && (!('role' in request.resource.data)
+              || ('role' in resource.data && request.resource.data.role == resource.data.role)
+              || (!('role' in resource.data) && request.resource.data.role == 'customer')))
+          || isAdmin()
+        );
       allow delete: if isAdmin();
     }
 
-    // User orders subcollection: owner and staff only
+    // User orders subcollection: owner and staff can read/create; only staff/admin can update/delete
     match /users/{userId}/orders/{orderId} {
-      allow read, write: if isOwner(userId) || isStaffOrAdmin();
+      allow read: if isOwner(userId) || isStaffOrAdmin();
+      allow create: if (isOwner(userId) && isValidOrderCreate(request.resource.data) && request.resource.data.userId == userId)
+        || (isStaffOrAdmin() && isValidOrderCreate(request.resource.data));
+      allow update: if isStaffOrAdmin() && isValidOrderUpdate(request.resource.data);
+      allow delete: if isStaffOrAdmin();
     }
 
     // Payments: written only by Cloud Functions; paying user, guest payment lookup by ID, or staff may read
     match /payments/{paymentId} {
-      allow get: if !('userId' in resource.data) || resource.data.userId == null || (isAuthenticated() && resource.data.userId == request.auth.uid) || isStaffOrAdmin();
-      allow list: if isStaffOrAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow get: if !('userId' in resource.data)
+        || resource.data.userId == null
+        || (isAuthenticated() && resource.data.userId == request.auth.uid)
+        || isStaffOrAdmin();
+      allow list: if isStaffOrAdmin()
+        || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow write: if false;
     }
 
-    // Orders: anyone can create a pending-payment order without login/signup (must include name, email, and phone); ONLY owners and staff can read
+    // Orders: anyone can create a pending-payment order without login/signup; ONLY owners and staff can read
     match /orders/{orderId} {
-      allow create: if request.resource.data.status == 'pending-payment'
-        && request.resource.data.userEmail is string
-        && request.resource.data.userEmail.size() > 3
-        && request.resource.data.delivery.recipientName is string
-        && request.resource.data.delivery.recipientName.size() >= 2
-        && request.resource.data.delivery.recipientPhone is string
-        && request.resource.data.delivery.recipientPhone.size() >= 9;
+      allow create: if isValidOrderCreate(request.resource.data);
       allow read: if isStaffOrAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
-      allow update, delete: if isStaffOrAdmin();
+      allow update: if isStaffOrAdmin() && isValidOrderUpdate(request.resource.data);
+      allow delete: if isStaffOrAdmin();
     }
 
     // Leads (weekly supply, stockist, photo booking): public creation, staff/admin read & manage
     match /leads/{leadId} {
-      allow create: if true;
-      allow read, update, delete: if isStaffOrAdmin();
+      allow create: if isValidLeadCreate(request.resource.data);
+      allow read, delete: if isStaffOrAdmin();
+      allow update: if isStaffOrAdmin() && isValidLeadUpdate(request.resource.data);
     }
 
-    // Sellers / Hunters (stock, sales & referral codes): public read for ref validation, staff/admin write
+    // Sellers / Hunters (PII, stock & sales totals): staff/admin read & write ONLY
     match /sellers/{sellerId} {
-      allow read: if true;
-      allow write: if isStaffOrAdmin();
+      allow read, delete: if isStaffOrAdmin();
+      allow create, update: if isStaffOrAdmin() && isValidSeller(request.resource.data, sellerId);
     }
 
-    // QR Message Cards (voice/video messages): anyone with the card QR code can open (get), buyers can create
+    // Referral Codes (public-safe lookup: { code, active } only, zero PII or sales data):
+    // Anyone can `get` a specific code during checkout; only staff/admin can list or manage codes
+    match /referralCodes/{code} {
+      allow get: if true;
+      allow list, delete: if isStaffOrAdmin();
+      allow create, update: if isStaffOrAdmin() && isValidReferralCode(request.resource.data, code);
+    }
+
+    // QR Message Cards (voice/video/note messages): anyone with the card QR code can open (get), buyers can create
     match /qrMessages/{messageId} {
       allow get: if true;
-      allow list: if isStaffOrAdmin();
-      allow create: if true;
-      allow update, delete: if isStaffOrAdmin();
+      allow list, delete: if isStaffOrAdmin();
+      allow create: if isValidQrMessage(request.resource.data);
+      allow update: if isStaffOrAdmin()
+        && isValidQrMessage(request.resource.data)
+        && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    // Default deny for all other paths
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -5,10 +5,8 @@ import { MapPin, QrCode, Candy, Zap, Sparkles } from 'lucide-react'
 import { useFlowers } from '../state/useFlowers'
 import { FlowerFilter } from '../components/FlowerFilter'
 import { FlowerGrid } from '../components/FlowerGrid'
-import { SEEDED_FLOWERS } from '../api/flowers.api'
 import type { FlowerCategory } from '../types/flower.types'
 import { useCart } from '@/features/cart/state/useCart'
-import { formatKsh } from '@/shared/utils/currency'
 
 export function FlowersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -95,12 +93,12 @@ function FlowersCatalog({
             <span>Hongera! Official Graduation Menu</span>
           </Badge>
           <h1 className="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white sm:text-4xl">
-            Six Products. One Clear Price List.
+            Graduation Bouquets
           </h1>
           <p className="mt-2 max-w-2xl text-sm sm:text-base text-neutral-600 dark:text-neutral-400">
             Fresh Kenyan roses, candy upgrades, and scannable QR voice/video
-            message cards — ready for collection at your campus graduation
-            station.
+            message cards — available for graduation event pickup or doorstep
+            delivery.
           </p>
         </div>
 
@@ -115,51 +113,10 @@ function FlowersCatalog({
         </Button>
       </div>
 
-      {/* Official Price List Table */}
-      <div className="mb-10 overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xs">
-        <div className="bg-neutral-50 dark:bg-neutral-950 px-5 py-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-            Official Menu & Price List (No Hidden Fees)
-          </span>
-          <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            Pay via M-Pesa • Collect at Station
-          </span>
-        </div>
-        <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-          {SEEDED_FLOWERS.map((prod) => (
-            <div
-              key={prod.id}
-              className="px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-sm text-neutral-900 dark:text-white w-32 shrink-0">
-                  {prod.name}
-                </span>
-                <span className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">
-                  {prod.whatsInIt}
-                </span>
-              </div>
-              <div className="flex items-center justify-between sm:justify-end gap-4">
-                <span className="text-sm font-extrabold text-rose-600 dark:text-rose-400">
-                  {formatKsh(prod.price)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => openQuickOrder({ flowerId: prod.id })}
-                  className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
-                >
-                  Buy Now →
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="mb-8 grid grid-cols-1 gap-3 rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-xs sm:text-sm dark:border-rose-950/60 dark:bg-rose-950/20 sm:grid-cols-3">
         <div className="flex items-center gap-2 text-rose-900 dark:text-rose-200">
           <Candy className="h-4 w-4 text-amber-500 shrink-0" />
-          <span>1-Tap Candy Upgrade on Mini & Classic (+KSh 150)</span>
+          <span>1-Tap Candy Upgrade on Mini & Classic</span>
         </div>
         <div className="flex items-center gap-2 text-rose-900 dark:text-rose-200">
           <QrCode className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -167,7 +124,7 @@ function FlowersCatalog({
         </div>
         <div className="flex items-center gap-2 text-rose-900 dark:text-rose-200">
           <MapPin className="h-4 w-4 text-emerald-600 shrink-0" />
-          <span>Instant M-Pesa Checkout & Campus Station Pickup</span>
+          <span>Event Pickup or Same-Day / 2–4 Day Delivery</span>
         </div>
       </div>
 

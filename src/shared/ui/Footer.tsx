@@ -1,5 +1,6 @@
-import { Heart, MapPin, ShieldCheck } from 'lucide-react'
+import { Heart, MapPin, MessageCircle, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { SITE_CONFIG } from '@/shared/config/site.config'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -43,16 +44,16 @@ export function Footer() {
                   />
                 </svg>
               </span>
-              <span>GradFlowers Kenya</span>
+              <span>{SITE_CONFIG.fullBrandName}</span>
             </Link>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-sm leading-relaxed">
-              Fresh rose bouquets for Kenyan graduations. Pay with M-Pesa and
-              collect at our station outside your university gate.
+              Fresh Kenyan rose bouquets for graduation day. Pay with M-Pesa for
+              pickup at your graduation event or delivery to your address.
             </p>
             <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500 pt-2">
               <span className="inline-flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5 text-rose-500" />
-                UoN • KU • JKUAT • Strathmore • USIU • MKU
+                TUK • KISE • KCA • UoN • KU • JKUAT
               </span>
               <span className="inline-flex items-center gap-1">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
@@ -63,7 +64,7 @@ export function Footer() {
 
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white mb-3">
-              Our Six Products
+              Bouquet Menu
             </h4>
             <ul className="space-y-2 text-xs text-neutral-600 dark:text-neutral-400">
               <li>
@@ -71,7 +72,7 @@ export function Footer() {
                   to="/flowers/single"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Single — 1 rose, ribbon (KSh 50)
+                  Single — 1 rose, ribbon
                 </Link>
               </li>
               <li>
@@ -79,7 +80,7 @@ export function Footer() {
                   to="/flowers/mini"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Mini — 3 roses, filler, wrap (KSh 350)
+                  Mini — 3 roses, filler, wrap
                 </Link>
               </li>
               <li>
@@ -87,7 +88,7 @@ export function Footer() {
                   to="/flowers/mini-candy"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Mini Candy — +Chocolate & card (KSh 500)
+                  Mini Candy — +Chocolate &amp; card
                 </Link>
               </li>
               <li>
@@ -95,7 +96,7 @@ export function Footer() {
                   to="/flowers/classic"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Classic — 6 roses, QR card (KSh 600)
+                  Classic — 6 roses, QR card
                 </Link>
               </li>
               <li>
@@ -103,7 +104,7 @@ export function Footer() {
                   to="/flowers/classic-candy"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Classic Candy — +Eclairs & toffees (KSh 750)
+                  Classic Candy — +Eclairs &amp; toffees
                 </Link>
               </li>
               <li>
@@ -111,7 +112,7 @@ export function Footer() {
                   to="/flowers/premium"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Premium — 12 roses, double wrap, QR (KSh 1,500)
+                  Premium — 12 roses, double wrap, QR
                 </Link>
               </li>
             </ul>
@@ -119,7 +120,7 @@ export function Footer() {
 
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white mb-3">
-              Orders & Services
+              Orders &amp; Support
             </h4>
             <ul className="space-y-2 text-xs text-neutral-600 dark:text-neutral-400">
               <li>
@@ -127,7 +128,7 @@ export function Footer() {
                   to="/orders"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Station Collection Pass
+                  My Orders &amp; Collection Pass
                 </Link>
               </li>
               <li>
@@ -135,27 +136,32 @@ export function Footer() {
                   to="/leads"
                   className="hover:text-rose-600 dark:hover:text-white transition-colors"
                 >
-                  Weekly Supply, Stockist & Photo Booking
+                  Weekly Flower Supply &amp; Photo Booking
                 </Link>
               </li>
               <li>
-                <Link
-                  to="/staff"
-                  className="hover:text-rose-600 dark:hover:text-white transition-colors"
+                <a
+                  href={SITE_CONFIG.buildWhatsAppUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium transition-colors"
                 >
-                  Staff & Hunters Dashboard
-                </Link>
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  <span>WhatsApp {SITE_CONFIG.whatsappDisplay}</span>
+                </a>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="pt-8 border-t border-neutral-200/60 dark:border-neutral-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-400 dark:text-neutral-500">
-          <p>© {currentYear} GradFlowers Kenya. All rights reserved.</p>
+          <p>
+            © {currentYear} {SITE_CONFIG.fullBrandName}. All rights reserved.
+          </p>
           <p className="flex items-center gap-1">
             <span>Hand-tied with</span>
             <Heart className="h-3 w-3 text-rose-500 fill-rose-500" />
-            <span>for Kenyan graduates & proud families.</span>
+            <span>for Kenyan graduates &amp; proud families.</span>
           </p>
         </div>
       </div>

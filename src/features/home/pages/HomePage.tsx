@@ -18,11 +18,7 @@ export function HomePage() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="flex flex-1 flex-col">
-        <HeroSection
-          flowers={catalog.flowers}
-          isLoadingFlowers={catalog.isLoading}
-          nextGraduation={graduations[0] ?? null}
-        />
+        <HeroSection nextGraduation={graduations[0] ?? null} />
         <MenuSection
           flowers={catalog.flowers}
           isLoading={catalog.isLoading}

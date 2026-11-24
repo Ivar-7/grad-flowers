@@ -17,6 +17,7 @@ import { Button } from '@/shared/ui/Button'
 import { LoadingState } from '@/shared/ui/LoadingState'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ErrorState } from '@/shared/errors/ErrorState'
+import { SITE_CONFIG } from '@/shared/config/site.config'
 import { normalizeError } from '@/shared/errors/error-normalizer'
 import type { AppError } from '@/shared/errors/app-error'
 
@@ -91,7 +92,9 @@ export function QrMessagePage() {
           description="This QR card code could not be found. Check the link on your bouquet card or order a fresh graduation bouquet."
           action={
             <Link to="/">
-              <Button variant="primary">Visit GradFlowers Kenya</Button>
+              <Button variant="primary">
+                Visit {SITE_CONFIG.fullBrandName}
+              </Button>
             </Link>
           }
         />
@@ -160,7 +163,7 @@ export function QrMessagePage() {
           <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-500">
             <span className="inline-flex items-center gap-1.5">
               <Flower2 className="h-4 w-4 text-rose-500" />
-              <span>GradFlowers Kenya — Fresh Graduation Blooms</span>
+              <span>{SITE_CONFIG.fullBrandName} — Fresh Graduation Blooms</span>
             </span>
             <Link to="/">
               <Button

@@ -1,8 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import { useCart } from '@/features/cart/state/useCart'
 
-const ROSES_PHOTO =
-  'https://images.unsplash.com/photo-1494972308805-463bc619d34e?auto=format&fit=crop&w=1600&q=70'
+const ROSES_PHOTO = '/images/bouquets/pink-red-roses.jpg'
 
 export function OrderCta() {
   const { openQuickOrder } = useCart()
@@ -30,7 +29,8 @@ export function OrderCta() {
             </em>
           </h2>
           <p className="mt-5 text-lg text-neutral-200">
-            Pick a bouquet, pay with M-Pesa, collect at the gate.
+            Pick a bouquet, pay with M-Pesa, and collect at the ceremony or get
+            it delivered.
           </p>
         </div>
 

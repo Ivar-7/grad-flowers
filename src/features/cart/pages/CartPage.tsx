@@ -31,7 +31,7 @@ export function CartPage() {
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <EmptyState
           title="Your bouquet basket is empty"
-          description="Pick from our 6 official graduation products — from a KSh 50 Single rose to a KSh 1,500 Premium bouquet."
+          description="Pick a fresh graduation bouquet for event pickup or doorstep delivery."
           icon={<ShoppingBag className="h-8 w-8 text-rose-500" />}
           action={
             <div className="flex flex-wrap items-center justify-center gap-3">

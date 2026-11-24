@@ -14,13 +14,20 @@ import {
   Trophy,
   AlertCircle,
   Lock,
+  Download,
+  Banknote,
+  Trash2,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/state/useAuth'
 import { useReferral } from '@/shared/referral/useReferral'
+import { SITE_CONFIG } from '@/shared/config/site.config'
 import {
   fetchSellers,
   upsertSeller,
+  markSellerPaidOut,
+  deleteSeller,
   computeSellerLeaderboard,
+  buildOrdersCsv,
 } from '../api/staff.api'
 import type { SellerRecord } from '../types/staff.types'
 import {
@@ -55,7 +62,12 @@ import { normalizeError } from '@/shared/errors/error-normalizer'
 type StaffTab = 'hunters' | 'orders' | 'leads' | 'menu'
 
 export function StaffDashboardPage() {
-  const { user, isAuthenticated, isStaffOrAdmin } = useAuth()
+  const {
+    user,
+    isAuthenticated,
+    isStaffOrAdmin,
+    isLoading: isAuthLoading,
+  } = useAuth()
   const { buildReferralLink } = useReferral()
 
   const [activeTab, setActiveTab] = useState<StaffTab>('hunters')
@@ -63,7 +75,8 @@ export function StaffDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [leads, setLeads] = useState<LeadDoc[]>([])
   const [flowers, setFlowers] = useState<Flower[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [hasLoaded, setHasLoaded] = useState<boolean>(false)
   const [bannerMsg, setBannerMsg] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
@@ -74,25 +87,26 @@ export function StaffDashboardPage() {
   const [sellerCode, setSellerCode] = useState('')
   const [sellerPhone, setSellerPhone] = useState('')
   const [sellerStation, setSellerStation] = useState(
-    'UoN — Great Court Station',
+    'Technical University of Kenya (TUK)',
   )
-  const [sellerStock, setSellerStock] = useState('50')
+  const [sellerStock, setSellerStock] = useState('30')
   const [sellerManualSold, setSellerManualSold] = useState('0')
+  const [sellerCommission, setSellerCommission] = useState(
+    String(SITE_CONFIG.referralCommissionPerOrderKsh),
+  )
   const [isSavingSeller, setIsSavingSeller] = useState(false)
   const [isSyncingMenu, setIsSyncingMenu] = useState(false)
 
   useEffect(() => {
+    if (isAuthLoading || !isAuthenticated || !isStaffOrAdmin) return
+
     let isMounted = true
 
     Promise.all([
       fetchSellers(),
       fetchFlowers('all'),
-      isStaffOrAdmin
-        ? fetchAllOrdersForStaff().catch(() => [] as Order[])
-        : Promise.resolve([] as Order[]),
-      isStaffOrAdmin
-        ? fetchAllLeadsForStaff().catch(() => [] as LeadDoc[])
-        : Promise.resolve([] as LeadDoc[]),
+      fetchAllOrdersForStaff(),
+      fetchAllLeadsForStaff(),
     ])
       .then(([sellersData, flowersData, ordersData, leadsData]) => {
         if (!isMounted) return
@@ -101,31 +115,28 @@ export function StaffDashboardPage() {
         setOrders(ordersData)
         setLeads(leadsData)
         setErrorMsg(null)
-        setIsLoading(false)
+        setHasLoaded(true)
       })
       .catch((err) => {
         if (!isMounted) return
         setErrorMsg(normalizeError(err).userMessage)
-        setIsLoading(false)
+        setHasLoaded(true)
       })
 
     return () => {
       isMounted = false
     }
-  }, [isStaffOrAdmin])
+  }, [isAuthLoading, isAuthenticated, isStaffOrAdmin])
 
   const loadDashboardData = useCallback(() => {
+    if (!isAuthenticated || !isStaffOrAdmin) return
     setIsLoading(true)
     setErrorMsg(null)
     Promise.all([
       fetchSellers(),
       fetchFlowers('all'),
-      isStaffOrAdmin
-        ? fetchAllOrdersForStaff().catch(() => [] as Order[])
-        : Promise.resolve([] as Order[]),
-      isStaffOrAdmin
-        ? fetchAllLeadsForStaff().catch(() => [] as LeadDoc[])
-        : Promise.resolve([] as LeadDoc[]),
+      fetchAllOrdersForStaff(),
+      fetchAllLeadsForStaff(),
     ])
       .then(([sellersData, flowersData, ordersData, leadsData]) => {
         setSellers(sellersData)
@@ -138,7 +149,7 @@ export function StaffDashboardPage() {
         setErrorMsg(normalizeError(err).userMessage)
         setIsLoading(false)
       })
-  }, [isStaffOrAdmin])
+  }, [isAuthenticated, isStaffOrAdmin])
 
   const leaderboard = computeSellerLeaderboard(sellers, orders, leads)
 
@@ -162,6 +173,9 @@ export function StaffDashboardPage() {
         station: sellerStation,
         allocatedStock: Number(sellerStock) || 0,
         manualSoldCount: Number(sellerManualSold) || 0,
+        commissionPerOrderKsh:
+          Number(sellerCommission) || SITE_CONFIG.referralCommissionPerOrderKsh,
+        available: true,
       })
       setSellers((prev) => [
         saved,
@@ -171,13 +185,54 @@ export function StaffDashboardPage() {
       setSellerCode('')
       setSellerPhone('')
       setBannerMsg(
-        `Saved seller @${saved.code} with ${saved.allocatedStock} bouquets allocated.`,
+        `Saved agent @${saved.code.toUpperCase()} (${formatKsh(saved.commissionPerOrderKsh)}/order) and published referral code.`,
       )
     } catch (err) {
       setErrorMsg(normalizeError(err).userMessage)
     } finally {
       setIsSavingSeller(false)
     }
+  }
+
+  const handleMarkPaid = async (code: string, totalEarnedKsh: number) => {
+    setErrorMsg(null)
+    try {
+      const paidAt = await markSellerPaidOut(code, totalEarnedKsh)
+      setSellers((prev) =>
+        prev.map((s) =>
+          s.code === code
+            ? { ...s, paidOutKsh: totalEarnedKsh, lastPaidAt: paidAt }
+            : s,
+        ),
+      )
+      setBannerMsg(
+        `Marked @${code.toUpperCase()} paid up to ${formatKsh(totalEarnedKsh)}.`,
+      )
+    } catch (err) {
+      setErrorMsg(normalizeError(err).userMessage)
+    }
+  }
+
+  const handleDeleteSeller = async (code: string) => {
+    setErrorMsg(null)
+    try {
+      await deleteSeller(code)
+      setSellers((prev) => prev.filter((s) => s.code !== code))
+      setBannerMsg(`Removed seller @${code.toUpperCase()}.`)
+    } catch (err) {
+      setErrorMsg(normalizeError(err).userMessage)
+    }
+  }
+
+  const handleExportOrdersCsv = () => {
+    const csv = buildOrdersCsv(orders)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `orders-${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleOrderStatusChange = async (
@@ -219,9 +274,7 @@ export function StaffDashboardPage() {
     try {
       const synced = await syncOfficialMenuToFirestore()
       setFlowers(synced)
-      setBannerMsg(
-        'Synced all 6 official products (Single, Mini, Mini Candy, Classic, Classic Candy, Premium) to Firestore!',
-      )
+      setBannerMsg('Synced bouquet menu & sample photos to Firestore.')
     } catch (err) {
       setErrorMsg(
         normalizeError(
@@ -243,7 +296,7 @@ export function StaffDashboardPage() {
       })
       setFlowers((prev) => prev.map((f) => (f.id === updated.id ? updated : f)))
       setBannerMsg(
-        `${updated.name} marked as ${updated.inStock ? 'In Stock' : 'Sold Out'}.`,
+        `${updated.name} marked as ${updated.inStock ? 'In Stock (Same-Day)' : 'Out of Stock (2–4 Days)'}.`,
       )
     } catch (err) {
       setErrorMsg(normalizeError(err).userMessage)
@@ -266,10 +319,47 @@ export function StaffDashboardPage() {
     }
   }
 
-  if (isLoading) {
+  // Strict Staff Login Gate — never expose staff tools or data to unauthenticated / non-staff visitors
+  if (isAuthLoading) {
+    return <LoadingState message="Checking staff access..." fullPage />
+  }
+
+  if (!isAuthenticated || !isStaffOrAdmin) {
     return (
-      <LoadingState message="Loading Staff & Hunters Dashboard..." fullPage />
+      <div className="mx-auto max-w-lg px-4 py-16 w-full">
+        <Card className="p-8 text-center space-y-5 border-neutral-200 dark:border-neutral-800">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+            <Lock className="h-7 w-7" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-white">
+              Staff &amp; Employees Only
+            </h1>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {isAuthenticated
+                ? `Your account (${user?.email}) does not have staff or admin access. Ask an administrator to assign your role.`
+                : `Sign in with a ${SITE_CONFIG.brandName} staff or admin account to manage agents, orders, payouts, and stock.`}
+            </p>
+          </div>
+          <div className="flex justify-center gap-3 pt-2">
+            <Link to="/auth">
+              <Button variant="primary" size="md">
+                {isAuthenticated ? 'Switch Account' : 'Staff Sign In'}
+              </Button>
+            </Link>
+            <Link to="/">
+              <Button variant="outline" size="md">
+                Back to Store
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
     )
+  }
+
+  if (!hasLoaded || isLoading) {
+    return <LoadingState message="Loading staff portal..." fullPage />
   }
 
   return (
@@ -280,27 +370,32 @@ export function StaffDashboardPage() {
           <div className="flex items-center gap-2 mb-2">
             <Badge variant="purple" className="gap-1">
               <Trophy className="h-3.5 w-3.5 text-amber-400" />
-              <span>Staff & Hunters Operations</span>
+              <span>{SITE_CONFIG.brandName} Staff Portal</span>
             </Badge>
             {user && (
-              <Badge
-                variant={isStaffOrAdmin ? 'success' : 'default'}
-                className="text-xs uppercase"
-              >
+              <Badge variant="success" className="text-xs uppercase">
                 Role: {user.role}
               </Badge>
             )}
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white sm:text-4xl">
-            Sales, Stock per Person, Leads & Menu
+            Agents, Payouts, Orders &amp; Stock
           </h1>
           <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-            Track hunter QR links (?ref=name), stock per person, station orders,
-            and leads
+            Private staff workspace — manage registered referral codes, KSh
+            commissions, orders sheet, and bouquet stock
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportOrdersCsv}
+            leftIcon={<Download className="h-4 w-4" />}
+          >
+            Export Orders Sheet (CSV)
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -311,25 +406,6 @@ export function StaffDashboardPage() {
           </Button>
         </div>
       </div>
-
-      {!isAuthenticated && (
-        <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
-          <div className="flex items-center gap-2.5">
-            <Lock className="h-4 w-4 shrink-0 text-amber-600" />
-            <span>
-              You can generate hunter QR links (`?ref=name`) below. To view
-              private customer orders & leads or edit database stock, sign in
-              with a Staff or Admin account (`users/&#123;uid&#125;.role =
-              'staff' | 'admin'`).
-            </span>
-          </div>
-          <Link to="/auth" className="shrink-0">
-            <Button size="sm" variant="primary">
-              Sign In
-            </Button>
-          </Link>
-        </div>
-      )}
 
       {bannerMsg && (
         <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
@@ -356,12 +432,12 @@ export function StaffDashboardPage() {
         {[
           {
             id: 'hunters' as const,
-            label: `Hunters & Stock (${leaderboard.length})`,
+            label: `Agents & Payouts (${leaderboard.length})`,
             icon: Users,
           },
           {
             id: 'orders' as const,
-            label: `Station Orders (${orders.length})`,
+            label: `All Orders (${orders.length})`,
             icon: ShoppingBag,
           },
           {
@@ -371,7 +447,7 @@ export function StaffDashboardPage() {
           },
           {
             id: 'menu' as const,
-            label: `6-Product Menu (${flowers.length})`,
+            label: `Bouquets & Stock (${flowers.length})`,
             icon: Flower2,
           },
         ].map((tab) => {
@@ -395,7 +471,7 @@ export function StaffDashboardPage() {
         })}
       </div>
 
-      {/* TAB 1: HUNTERS, SALES, STOCK PER PERSON & QR LINKS */}
+      {/* TAB 1: REGISTERED AGENTS, KSH EARNINGS, PAYOUTS & QR LINKS */}
       {activeTab === 'hunters' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-8 space-y-4">
@@ -403,134 +479,194 @@ export function StaffDashboardPage() {
               <div className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/60 dark:bg-neutral-900/50">
                 <div>
                   <h3 className="text-sm font-extrabold text-neutral-900 dark:text-white">
-                    Sales, Stock & Points per Person
+                    Registered Agents, Orders &amp; KSh Earnings
                   </h3>
                   <p className="text-xs text-neutral-500">
-                    Each hunter’s QR adds ?ref=name — orders (10 pts) & leads
-                    (15 pts) credited automatically
+                    Only registered codes below are credited on paid orders
+                    (e.g. 10 paid orders × KSh 30 = KSh 300).
                   </p>
                 </div>
               </div>
 
-              <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {leaderboard.map((row, idx) => (
-                  <div
-                    key={row.code}
-                    className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/50 dark:hover:bg-neutral-900/40"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-xs font-extrabold">
-                          #{idx + 1}
-                        </span>
-                        <span className="text-sm font-extrabold text-neutral-900 dark:text-white">
-                          {row.name}
-                        </span>
-                        <Badge variant="default" className="font-mono text-xs">
-                          ?ref={row.code}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-neutral-500">
-                        Station: {row.station} • Phone: {row.phone}
-                      </p>
+              {leaderboard.length === 0 ? (
+                <div className="p-8">
+                  <EmptyState
+                    title="No agents registered yet"
+                    description="Register your first agent (e.g. PETTI) using the form on the right so buyers can use their code at checkout."
+                    action={
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSellerName('Petti')
+                          setSellerCode('petti')
+                          setSellerCommission(
+                            String(SITE_CONFIG.referralCommissionPerOrderKsh),
+                          )
+                        }}
+                      >
+                        Pre-fill Petti
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {leaderboard.map((row, idx) => (
+                    <div
+                      key={row.code}
+                      className="p-5 flex flex-col gap-4 hover:bg-neutral-50/50 dark:hover:bg-neutral-900/40"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-xs font-extrabold">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-sm font-extrabold text-neutral-900 dark:text-white">
+                              {row.name}
+                            </span>
+                            <Badge
+                              variant="default"
+                              className="font-mono text-xs uppercase"
+                            >
+                              {row.code}
+                            </Badge>
+                            <span className="text-xs text-neutral-500">
+                              ({formatKsh(row.commissionPerOrderKsh)}/order)
+                            </span>
+                          </div>
+                          <p className="text-xs text-neutral-500">
+                            Area: {row.station} • Phone: {row.phone || '—'}
+                          </p>
 
-                      {/* Shareable Link & QR */}
-                      <div className="pt-1.5 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyRefLink(row.code)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 cursor-pointer"
-                        >
-                          {copiedCode === row.code ? (
-                            <>
-                              <Check className="h-3 w-3 text-emerald-500" />
-                              <span>Copied ?ref={row.code}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3 w-3" />
-                              <span>Copy Seller Link</span>
-                            </>
+                          {/* Shareable Link, QR & Payout Actions */}
+                          <div className="pt-1.5 flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyRefLink(row.code)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 cursor-pointer"
+                            >
+                              {copiedCode === row.code ? (
+                                <>
+                                  <Check className="h-3 w-3 text-emerald-500" />
+                                  <span>Copied ?ref={row.code}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3 w-3" />
+                                  <span>Copy Link</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setQrModalCode(
+                                  qrModalCode === row.code ? null : row.code,
+                                )
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 cursor-pointer"
+                            >
+                              <QrCode className="h-3 w-3" />
+                              <span>
+                                {qrModalCode === row.code
+                                  ? 'Hide QR'
+                                  : 'Agent QR'}
+                              </span>
+                            </button>
+
+                            {row.unpaidKsh > 0 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleMarkPaid(row.code, row.earnedKsh)
+                                }
+                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 cursor-pointer"
+                              >
+                                <Banknote className="h-3.5 w-3.5" />
+                                <span>
+                                  Mark Paid ({formatKsh(row.unpaidKsh)})
+                                </span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSeller(row.code)}
+                              aria-label={`Remove agent ${row.name}`}
+                              className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-xs text-neutral-500 hover:text-red-600 hover:border-red-300 cursor-pointer"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+
+                          {qrModalCode === row.code && (
+                            <div className="pt-3">
+                              <QrCodeDisplay
+                                url={buildReferralLink(row.code)}
+                                label={`Agent QR: ${row.name}`}
+                                subtitle={`Code: ${row.code.toUpperCase()}`}
+                                size={140}
+                              />
+                            </div>
                           )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setQrModalCode(
-                              qrModalCode === row.code ? null : row.code,
-                            )
-                          }
-                          className="inline-flex items-center gap-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 cursor-pointer"
-                        >
-                          <QrCode className="h-3 w-3" />
-                          <span>
-                            {qrModalCode === row.code ? 'Hide QR' : 'Hunter QR'}
-                          </span>
-                        </button>
-                      </div>
-
-                      {qrModalCode === row.code && (
-                        <div className="pt-3">
-                          <QrCodeDisplay
-                            url={buildReferralLink(row.code)}
-                            label={`Hunter QR: ${row.name}`}
-                            subtitle={`Scans open ?ref=${row.code}`}
-                            size={140}
-                          />
                         </div>
-                      )}
-                    </div>
 
-                    {/* Metrics Grid */}
-                    <div className="grid grid-cols-4 gap-3 text-center shrink-0">
-                      <div className="p-2.5 rounded-xl bg-neutral-100/70 dark:bg-neutral-800/60">
-                        <span className="block text-xs text-neutral-500">
-                          Stock Left
-                        </span>
-                        <span className="text-sm font-extrabold text-neutral-900 dark:text-white">
-                          {row.remainingStock}/{row.allocatedStock}
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-neutral-100/70 dark:bg-neutral-800/60">
-                        <span className="block text-xs text-neutral-500">
-                          Sales
-                        </span>
-                        <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
-                          {formatKsh(row.totalSalesKsh)}
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-neutral-100/70 dark:bg-neutral-800/60">
-                        <span className="block text-xs text-neutral-500">
-                          Leads
-                        </span>
-                        <span className="text-sm font-extrabold text-neutral-900 dark:text-white">
-                          {row.leadsCount}
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/50">
-                        <span className="block text-xs text-amber-700 dark:text-amber-300">
-                          Points
-                        </span>
-                        <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400">
-                          {row.points} pts
-                        </span>
+                        {/* Metrics Grid: Paid Orders, Earned KSh, Paid Out, Balance Due */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center shrink-0">
+                          <div className="p-2.5 rounded-xl bg-neutral-100/70 dark:bg-neutral-800/60">
+                            <span className="block text-xs text-neutral-500">
+                              Paid Orders
+                            </span>
+                            <span className="text-sm font-extrabold text-neutral-900 dark:text-white">
+                              {row.paidOrdersCount}
+                            </span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/50">
+                            <span className="block text-xs text-emerald-700 dark:text-emerald-300">
+                              Earned
+                            </span>
+                            <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-400">
+                              {formatKsh(row.earnedKsh)}
+                            </span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-neutral-100/70 dark:bg-neutral-800/60">
+                            <span className="block text-xs text-neutral-500">
+                              Paid Out
+                            </span>
+                            <span className="text-sm font-extrabold text-neutral-700 dark:text-neutral-200">
+                              {formatKsh(row.paidOutKsh)}
+                            </span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/50">
+                            <span className="block text-xs text-amber-700 dark:text-amber-300">
+                              Balance Due
+                            </span>
+                            <span className="text-sm font-extrabold text-amber-700 dark:text-amber-400">
+                              {formatKsh(row.unpaidKsh)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
-          {/* Add / Update Hunter Stock Form */}
+          {/* Register / Update Agent Form */}
           <div className="lg:col-span-4">
             <Card className="p-6 border-neutral-200 dark:border-neutral-800">
               <h3 className="text-base font-extrabold text-neutral-900 dark:text-white mb-1">
-                Assign Hunter Stock & QR Code
+                Register Agent / Seller Code
               </h3>
               <p className="text-xs text-neutral-500 mb-4">
-                Add a team member or update their allocated bouquet stock
+                Create a code (e.g. PETTI) so buyers can type it at checkout and
+                earn KSh per paid order
               </p>
 
               <form onSubmit={handleSaveSeller} className="space-y-3">
@@ -539,7 +675,7 @@ export function StaffDashboardPage() {
                     htmlFor="seller-name"
                     className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1"
                   >
-                    Hunter Full Name *
+                    Agent Full Name *
                   </label>
                   <input
                     id="seller-name"
@@ -558,7 +694,7 @@ export function StaffDashboardPage() {
                         )
                       }
                     }}
-                    placeholder="e.g. Faith Njeri"
+                    placeholder="e.g. Petti"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
                   />
                 </div>
@@ -578,7 +714,7 @@ export function StaffDashboardPage() {
                     onChange={(e) =>
                       setSellerCode(e.target.value.toLowerCase())
                     }
-                    placeholder="e.g. faith"
+                    placeholder="e.g. petti"
                     className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
                   />
                 </div>
@@ -606,7 +742,7 @@ export function StaffDashboardPage() {
                     htmlFor="seller-station"
                     className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1"
                   >
-                    Assigned Campus Station *
+                    Assigned Campus / Area *
                   </label>
                   <input
                     id="seller-station"
@@ -618,13 +754,29 @@ export function StaffDashboardPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label
+                      htmlFor="seller-commission"
+                      className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1"
+                    >
+                      KSh / Order
+                    </label>
+                    <input
+                      id="seller-commission"
+                      type="number"
+                      min={0}
+                      value={sellerCommission}
+                      onChange={(e) => setSellerCommission(e.target.value)}
+                      className="w-full px-2.5 py-2 text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+                    />
+                  </div>
                   <div>
                     <label
                       htmlFor="seller-stock"
                       className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1"
                     >
-                      Bouquets Allocated
+                      Stock
                     </label>
                     <input
                       id="seller-stock"
@@ -632,7 +784,7 @@ export function StaffDashboardPage() {
                       min={0}
                       value={sellerStock}
                       onChange={(e) => setSellerStock(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+                      className="w-full px-2.5 py-2 text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
                     />
                   </div>
                   <div>
@@ -640,7 +792,7 @@ export function StaffDashboardPage() {
                       htmlFor="seller-manual-sold"
                       className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1"
                     >
-                      Walk-Up Sold
+                      Walk-Up
                     </label>
                     <input
                       id="seller-manual-sold"
@@ -648,7 +800,7 @@ export function StaffDashboardPage() {
                       min={0}
                       value={sellerManualSold}
                       onChange={(e) => setSellerManualSold(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+                      className="w-full px-2.5 py-2 text-xs rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
                     />
                   </div>
                 </div>
@@ -661,7 +813,7 @@ export function StaffDashboardPage() {
                   leftIcon={<Plus className="h-4 w-4" />}
                   className="w-full mt-2"
                 >
-                  Save Hunter & Stock
+                  Save Agent &amp; Activate Code
                 </Button>
               </form>
             </Card>
@@ -669,17 +821,13 @@ export function StaffDashboardPage() {
         </div>
       )}
 
-      {/* TAB 2: STATION ORDERS */}
+      {/* TAB 2: ALL ORDERS */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
           {orders.length === 0 ? (
             <EmptyState
-              title="No station orders loaded"
-              description={
-                isStaffOrAdmin
-                  ? 'New 60-second M-Pesa orders will appear here automatically.'
-                  : 'Sign in with a Staff or Admin account to read all customer orders.'
-              }
+              title="No orders yet"
+              description="New M-Pesa orders will appear here automatically and can be exported into one CSV sheet."
             />
           ) : (
             orders.map((order) => (
@@ -695,8 +843,18 @@ export function StaffDashboardPage() {
                     <Badge variant="default" className="capitalize">
                       {order.status.replace(/-/g, ' ')}
                     </Badge>
+                    <Badge variant="purple" className="capitalize">
+                      {order.delivery.fulfillmentType === 'address-delivery'
+                        ? 'Delivery'
+                        : 'Event Pickup'}
+                    </Badge>
                     {order.referrer && (
-                      <Badge variant="success">Ref: @{order.referrer}</Badge>
+                      <Badge variant="success">
+                        Code: @{order.referrer.toUpperCase()}
+                      </Badge>
+                    )}
+                    {order.fulfillment?.route && (
+                      <Badge variant="default">{order.fulfillment.route}</Badge>
                     )}
                     {order.qrMessageId && (
                       <Link
@@ -708,9 +866,11 @@ export function StaffDashboardPage() {
                     )}
                   </div>
                   <p className="text-neutral-700 dark:text-neutral-300 font-semibold">
-                    {order.delivery.recipientName} •{' '}
-                    {order.delivery.recipientEmail || order.userEmail} •{' '}
-                    {order.delivery.recipientPhone}
+                    Buyer: {order.delivery.recipientName}
+                    {order.delivery.graduandName
+                      ? ` • Graduand: ${order.delivery.graduandName}`
+                      : ''}{' '}
+                    • {order.delivery.recipientPhone}
                   </p>
                   <p className="text-neutral-500">
                     {order.delivery.campusOrVenue} —{' '}
@@ -747,9 +907,9 @@ export function StaffDashboardPage() {
                       }`}
                     >
                       {st === 'out-for-delivery'
-                        ? 'Ready at Station'
+                        ? 'Ready / Out'
                         : st === 'delivered'
-                          ? 'Collected'
+                          ? 'Completed'
                           : st.replace(/-/g, ' ')}
                     </button>
                   ))}
@@ -766,11 +926,7 @@ export function StaffDashboardPage() {
           {leads.length === 0 ? (
             <EmptyState
               title="No leads in inbox yet"
-              description={
-                isStaffOrAdmin
-                  ? 'Weekly Supply, Stockist, and Photo Booking inquiries will appear here.'
-                  : 'Sign in with a Staff or Admin account to view submitted leads.'
-              }
+              description="Weekly Supply and Photo Booking inquiries will appear here."
             />
           ) : (
             leads.map((lead) => (
@@ -788,7 +944,7 @@ export function StaffDashboardPage() {
                     </span>
                     {lead.referrer && (
                       <Badge variant="success">
-                        Credited: @{lead.referrer}
+                        Code: @{lead.referrer.toUpperCase()}
                       </Badge>
                     )}
                   </div>
@@ -825,18 +981,17 @@ export function StaffDashboardPage() {
         </div>
       )}
 
-      {/* TAB 4: 6-PRODUCT MENU & PHOTO MANAGER */}
+      {/* TAB 4: BOUQUETS & STOCK MANAGER */}
       {activeTab === 'menu' && (
         <div className="space-y-6">
           <Card className="p-6 border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-base font-extrabold text-neutral-900 dark:text-white">
-                Official Six-Product Menu Database Sync
+                Bouquet Catalog &amp; Stock Availability
               </h3>
               <p className="text-xs text-neutral-500">
-                Writes the 6 products (Single KSh 50, Mini KSh 350, Mini Candy
-                KSh 500, Classic KSh 600, Classic Candy KSh 750, Premium KSh
-                1,500) to Firestore and removes any old prototype items.
+                Toggle stock availability: In Stock bouquets route to same-day
+                delivery; Sold Out bouquets route to 2–4 day sourcing.
               </p>
             </div>
             <Button
@@ -846,7 +1001,7 @@ export function StaffDashboardPage() {
               onClick={handleSyncOfficialMenu}
               leftIcon={<RefreshCw className="h-4 w-4" />}
             >
-              Sync 6 Official Products to Firestore
+              Sync Bouquet Catalog to Firestore
             </Button>
           </Card>
 
@@ -884,15 +1039,17 @@ export function StaffDashboardPage() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer ${
                       flower.inStock
                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'border-red-200 bg-red-50 text-red-700'
+                        : 'border-amber-200 bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
                     }`}
                   >
-                    {flower.inStock ? 'In Stock' : 'Sold Out'}
+                    {flower.inStock
+                      ? 'In Stock (Same-Day)'
+                      : '2–4 Days Sourcing'}
                   </button>
 
                   <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 cursor-pointer">
                     <Upload className="h-3.5 w-3.5" />
-                    <span>Upload Real Photo</span>
+                    <span>Upload Photo</span>
                     <input
                       type="file"
                       accept="image/*"

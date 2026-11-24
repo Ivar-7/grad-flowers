@@ -1,22 +1,19 @@
 import { QrCode } from 'lucide-react'
-import { SEEDED_FLOWERS } from '@/features/flowers/api/flowers.api'
 import type { Flower } from '@/features/flowers/types/flower.types'
 import { formatKsh } from '@/shared/utils/currency'
-
-const MENU_PRICES = SEEDED_FLOWERS.map((flower) => flower.price)
 
 const STEPS = [
   {
     title: 'Pick a bouquet',
-    body: `${SEEDED_FLOWERS.length} to choose from, ${formatKsh(Math.min(...MENU_PRICES))} to ${formatKsh(Math.max(...MENU_PRICES))}. No account and no sign-up.`,
+    body: 'Choose your bouquet, school ribbon colour, and optional treats or QR voice/video card. No account needed.',
   },
   {
     title: 'Pay with M-Pesa',
-    body: 'Enter your 07… or 01… number and approve the prompt on your phone. Your order code arrives straight away.',
+    body: 'Choose graduation pickup or address delivery, enter your 07… or 01… M-Pesa number, and approve the prompt on your phone.',
   },
   {
-    title: 'Collect at the gate',
-    body: 'Show your order code at our station outside the graduation gate. No detour into town on the morning.',
+    title: 'Pickup or delivery',
+    body: 'For graduation pickup we connect you with an available vendor. For delivery, in-stock bouquets go out same day (small fee) or within 2–4 days when freshly sourced.',
   },
 ]
 
@@ -64,7 +61,7 @@ export function HowItWorksSection({ flowers }: HowItWorksSectionProps) {
             How it works
           </p>
           <h2 className="mt-3 font-display text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl">
-            Order in a minute. Collect at the gate.
+            Order in a minute. Pick up or get it delivered.
           </h2>
         </div>
 

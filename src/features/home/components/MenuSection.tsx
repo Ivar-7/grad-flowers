@@ -30,14 +30,14 @@ export function MenuSection({
         <div className="mb-10 flex flex-col gap-4 sm:mb-14 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold tracking-widest text-rose-700 uppercase dark:text-rose-400">
-              The menu
+              Our bouquets
             </p>
             <h2 className="mt-3 font-display text-4xl leading-tight font-semibold tracking-tight text-balance text-neutral-900 sm:text-5xl dark:text-white">
-              Six bouquets. One price list.
+              Fresh bouquets for every graduate.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-neutral-600 sm:text-lg dark:text-neutral-400">
-              From a single rose for a classmate to a full dozen for the one you
-              raised. The price you see is the price you pay.
+              From a sweet mini bouquet for a classmate to a grand dozen for the
+              one you raised — ready for event pickup or doorstep delivery.
             </p>
           </div>
 

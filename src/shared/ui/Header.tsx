@@ -1,17 +1,11 @@
 ﻿import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
-import {
-  ShoppingBag,
-  Package,
-  Menu,
-  X,
-  Users,
-  CalendarHeart,
-} from 'lucide-react'
+import { ShoppingBag, Package, Menu, X, CalendarHeart } from 'lucide-react'
 import { useAuth } from '@/features/auth/state/useAuth'
 import { useCart } from '@/features/cart/state/useCart'
 import { useReferral } from '@/shared/referral/useReferral'
+import { SITE_CONFIG } from '@/shared/config/site.config'
 import { ThemeToggle } from '../theme/ThemeToggle'
 import { cn } from '../utils/cn'
 
@@ -77,9 +71,9 @@ export function Header() {
               </svg>
             </span>
             <span className="flex items-center gap-1">
-              <span>GradFlowers</span>
+              <span>{SITE_CONFIG.brandName}</span>
               <span className="hidden sm:inline text-xs font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                KE
+                {SITE_CONFIG.brandBadge}
               </span>
             </span>
           </Link>
@@ -89,7 +83,7 @@ export function Header() {
               Home
             </NavLink>
             <NavLink to="/flowers" className={navLinkClass}>
-              Our 6 Products
+              Bouquets
             </NavLink>
             <NavLink to="/leads" className={navLinkClass}>
               <span className="flex items-center gap-1.5">
@@ -100,13 +94,7 @@ export function Header() {
             <NavLink to="/orders" className={navLinkClass}>
               <span className="flex items-center gap-1.5">
                 <Package className="h-3.5 w-3.5" />
-                <span>Station Pass</span>
-              </span>
-            </NavLink>
-            <NavLink to="/staff" className={navLinkClass}>
-              <span className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                <span>Staff</span>
+                <span>My Orders</span>
               </span>
             </NavLink>
           </nav>
@@ -212,28 +200,21 @@ export function Header() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={navLinkClass}
               >
-                Our 6 Products (KSh 50 – 1,500)
+                Bouquets
               </NavLink>
               <NavLink
                 to="/leads"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={navLinkClass}
               >
-                Weekly Supply, Stockists & Photos
+                Weekly Supply & Graduation Photos
               </NavLink>
               <NavLink
                 to="/orders"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={navLinkClass}
               >
-                Station Pass & Orders
-              </NavLink>
-              <NavLink
-                to="/staff"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={navLinkClass}
-              >
-                Staff & Hunters Dashboard
+                My Orders & Pass
               </NavLink>
             </div>
           </motion.nav>
