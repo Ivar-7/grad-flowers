@@ -17,7 +17,12 @@ export const FlowerSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   price: z.number().positive('Price must be greater than 0'),
   category: FlowerCategorySchema,
-  imageUrl: z.string().url('Must be a valid image URL'),
+  imageUrl: z
+    .string()
+    .refine(
+      (val) => val.startsWith('/') || /^https?:\/\/.+/.test(val),
+      'Must be a valid image URL or path',
+    ),
   isFeatured: z.boolean().default(false),
   inStock: z.boolean().default(true),
   ribbonColors: z.array(z.string()).default([]),

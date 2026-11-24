@@ -4,8 +4,7 @@ import { KENYAN_PICKUP_STATIONS } from '@/features/checkout/types/checkout.types
 import { Button } from '@/shared/ui/Button'
 import { cn } from '@/shared/utils/cn'
 
-const BOUQUET_PHOTO =
-  'https://images.unsplash.com/photo-1596438459194-f275f413d6ff?auto=format&fit=crop&w=900&q=75'
+const BOUQUET_PHOTO = '/images/bouquets/vase-lilies.jpg'
 
 interface RibbonOption {
   /** Must match a ribbon colour offered in the order form. */

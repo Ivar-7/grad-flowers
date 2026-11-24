@@ -11,7 +11,12 @@ export const CartItemSchema = z.object({
   flowerId: z.string().min(1),
   name: z.string().min(1),
   whatsInIt: z.string().optional(),
-  imageUrl: z.string().url(),
+  imageUrl: z
+    .string()
+    .refine(
+      (val) => val.startsWith('/') || /^https?:\/\/.+/.test(val),
+      'Must be a valid image URL or path',
+    ),
   category: z.string().min(1),
   basePrice: z.number().positive(),
   tier: z.enum(['standard', 'deluxe', 'grand']),
